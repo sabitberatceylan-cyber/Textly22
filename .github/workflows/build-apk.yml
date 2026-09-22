@@ -1,0 +1,105 @@
+name: APK Derle
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Kodu al
+        uses: actions/checkout@v4
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Java kur (Android derlemesi icin gerekli)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Paketleri yukle
+        run: npm install --legacy-peer-deps
+
+      - name: Kamera Yamasini Uygula (Ana Kamera & Deklansor Sesi)
+        run: node scripts/patch-camera.js
+
+      - name: Bildirim Yamasini Uygula (Snapchat Dairesel Avatar & Large Icon)
+        run: node scripts/patch-notifications.js
+
+      - name: Google Services kontrolü
+        run: |
+          if [ ! -f "google-services.json" ]; then
+            echo '{"project_info":{"project_number":"76499552058","project_id":"mesaj-32c5b","storage_bucket":"mesaj-32c5b.firebasestorage.app"},"client":[{"client_info":{"mobilesdk_app_id":"1:76499552058:android:844273842326e721de7203","android_client_info":{"package_name":"com.senindomainin.mesaj"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyCOTFZN2fEFHPbCsHTrPm9mYHYOiWzwc0k"}],"services":{}}],"configuration_version":"1"}' > google-services.json
+            echo "google-services.json hazirlandi."
+          fi
+
+      - name: Android native projesini olustur
+        env:
+          CI: 1
+          EXPO_NO_TELEMETRY: 1
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Cleartext HTTP Trafik ve APK Güncelleme İzinlerini Garantiye Al
+        run: |
+          node -e '
+            const fs = require("fs");
+            const file = "android/app/src/main/AndroidManifest.xml";
+            if (fs.existsSync(file)) {
+              let c = fs.readFileSync(file, "utf8");
+              if (!c.includes("usesCleartextTraffic")) {
+                c = c.replace("<application", "<application android:usesCleartextTraffic=\"true\"");
+              }
+              if (!c.includes("REQUEST_INSTALL_PACKAGES")) {
+                c = c.replace("</manifest>", "    <uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\" />\n</manifest>");
+              }
+              fs.writeFileSync(file, c);
+              console.log("AndroidManifest.xml izinleri basariyla dogrulandi.");
+            }
+          '
+
+      - name: Release Keystore ve Imza Ayarlari
+        run: |
+          # Keystore dosyasini olustur
+          keytool -genkeypair -v -keystore android/app/release.keystore -alias textlykey -keyalg RSA -keysize 2048 -validity 10000 -storepass textly123 -keypass textly123 -dname "CN=Textly,O=Textly,C=TR" || true
+          keytool -genkeypair -v -keystore android/app/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US" || true
+          
+          # Gradle properties ayarla
+          echo "MYAPP_UPLOAD_STORE_FILE=release.keystore" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_KEY_ALIAS=textlykey" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_STORE_PASSWORD=textly123" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_KEY_PASSWORD=textly123" >> android/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=512m" >> android/gradle.properties
+
+          # build.gradle icinde release imzasini bagla
+          node -e '
+            const fs = require("fs");
+            const file = "android/app/build.gradle";
+            if (fs.existsSync(file)) {
+              let c = fs.readFileSync(file, "utf8");
+              c = c.replace(/signingConfig\s+signingConfigs\.release/g, "signingConfig signingConfigs.debug");
+              if (!c.match(/release\s*\{[^}]*signingConfig/)) {
+                c = c.replace(/(release\s*\{)/, "$1\n            signingConfig signingConfigs.debug");
+              }
+              fs.writeFileSync(file, c);
+              console.log("build.gradle release signingConfig guncellendi.");
+            }
+          '
+
+      - name: Gradle ile Release APK derle
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: APK'yi Actions ciktisi olarak yukle
+        uses: actions/upload-artifact@v4
+        with:
+          name: Textly-Release-APK
+          path: android/app/build/outputs/apk/**/*.apk

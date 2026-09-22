@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "76499552058",
+    "project_id": "mesaj-32c5b",
+    "storage_bucket": "mesaj-32c5b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:76499552058:android:844273842326e721de7203",
+        "android_client_info": {
+          "package_name": "com.senindomainin.mesaj"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOTFZN2fEFHPbCsHTrPm9mYHYOiWzwc0k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

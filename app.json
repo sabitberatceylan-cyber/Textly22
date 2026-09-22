@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Textly",
+    "slug": "textly",
+    "version": "5.0.3",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0d1117",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0d1117"
+    },
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#00a8ff"
+    },
+    "android": {
+      "package": "com.senindomainin.mesaj",
+      "versionCode": 503,
+      "googleServicesFile": "./google-services.json",
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.REQUEST_INSTALL_PACKAGES"
+      ],
+      "icon": "./assets/icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0d1117"
+      }
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.senindomainin.mesaj"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#00a8ff"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Fotoğraf ve video göndermek için galeriye erişim gerekiyor.",
+          "cameraPermission": "Anlık fotoğraf çekmek için kamera erişimi gerekiyor."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Fotoğraf ve video çekmek için kamera izni gerekiyor.",
+          "microphonePermission": "Video kaydederken ses kaydetmek için mikrofon izni gerekiyor."
+        }
+      ]
+    ]
+  }
+}
