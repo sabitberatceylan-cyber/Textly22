@@ -74,11 +74,26 @@ try {
 
 // ==========================================
 // 2. ExpoNotificationBuilder.kt Güncellemesi
-// Snapchat stili: Solda dairesel profil avatarı + minik uygulama rozeti, sağda thumbnail yok (MessagingStyle)
+// Bildirim LargeIcon'unu dairesel (Snapchat/WhatsApp stili avatar) yap
 // ==========================================
 try {
   let builderContent = fs.readFileSync(builderFile, 'utf8');
   let builderModified = false;
+
+  const targetCall = `    if (notificationContent.containsImage()) {
+      val bitmap = notificationContent.getImage(context)
+      bitmap?.let { builder.setLargeIcon(it) }
+    } else {
+      builder.setLargeIcon(largeIcon)
+    }`;
+
+  const replacementCall = `    if (notificationContent.containsImage()) {
+      val bitmap = notificationContent.getImage(context)
+      val circular = bitmap?.let { getCircularBitmap(it) }
+      circular?.let { builder.setLargeIcon(it) }
+    } else {
+      builder.setLargeIcon(largeIcon)
+    }`;
 
   const helperMethod = `
   private fun getCircularBitmap(bitmap: Bitmap): Bitmap {
@@ -97,35 +112,8 @@ try {
   }
 `;
 
-  const messagingStyleReplacement = `    if (notificationContent.containsImage()) {
-      val bitmap = notificationContent.getImage(context)
-      val circular = bitmap?.let { getCircularBitmap(it) }
-      if (circular != null) {
-        val sender = androidx.core.app.Person.Builder()
-          .setName(content.title ?: "Textly")
-          .setIcon(androidx.core.graphics.drawable.IconCompat.createWithBitmap(circular))
-          .build()
-        val user = androidx.core.app.Person.Builder()
-          .setName("You")
-          .build()
-        val messagingStyle = androidx.core.app.NotificationCompat.MessagingStyle(user)
-          .setConversationTitle(null)
-          .setGroupConversation(false)
-          .addMessage(content.text ?: "", System.currentTimeMillis(), sender)
-        builder.setStyle(messagingStyle)
-        builder.setLargeIcon(null as android.graphics.Bitmap?)
-      } else {
-        builder.setLargeIcon(largeIcon)
-      }
-    } else {
-      builder.setLargeIcon(largeIcon)
-    }`;
-
-  // Hem orijinal Expo bloğunu hem de önceki dairesel LargeIcon bloğunu eşleştirip MessagingStyle ile değiştir
-  const targetRegex = /if\s*\(notificationContent\.containsImage\(\)\)\s*\{[\s\S]*?builder\.setLargeIcon\(largeIcon\)\s*\}/;
-
-  if (targetRegex.test(builderContent)) {
-    builderContent = builderContent.replace(targetRegex, messagingStyleReplacement);
+  if (builderContent.includes(targetCall)) {
+    builderContent = builderContent.replace(targetCall, replacementCall);
     if (!builderContent.includes('fun getCircularBitmap')) {
       builderContent = builderContent.replace('open class ExpoNotificationBuilder', helperMethod + '\nopen class ExpoNotificationBuilder');
     }
@@ -134,7 +122,7 @@ try {
 
   if (builderModified) {
     fs.writeFileSync(builderFile, builderContent, 'utf8');
-    console.log('[patch-notifications] ExpoNotificationBuilder.kt basariyla Snapchat MessagingStyle stiline yamalandi.');
+    console.log('[patch-notifications] ExpoNotificationBuilder.kt basariyla dairesel avatar ile yamalandi.');
   } else {
     console.log('[patch-notifications] ExpoNotificationBuilder.kt zaten guncel.');
   }
