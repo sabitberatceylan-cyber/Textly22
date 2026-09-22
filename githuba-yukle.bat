@@ -21,10 +21,18 @@ if not exist ".git" (
 
 :: Uzak repo adresi kontrolu
 git remote get-url origin >nul 2>nul
-if %errorlevel% neq 0 (
-    echo GitHub repo linkinizi girin (Ornek: https://github.com/sabitberatceylan-cyber/PROJE-ADINIZ):
+if %errorlevel% equ 0 (
+    for /f "tokens=*" %%a in ('git remote get-url origin') do set CURRENT_REPO=%%a
+    echo Hedef Repo: %CURRENT_REPO%
+    echo (Farkli bir repoya yuklemek isterseniz yeni linki yazin, ayni repoya yuklemek icin direkt ENTER'a basin)
+    set /p REPO_URL="Yeni Repo Linki (Opsiyonel): "
+    if not "%REPO_URL%"=="" (
+        git remote set-url origin %REPO_URL%
+    )
+) else (
+    echo GitHub repo linkinizi girin (Ornek: https://github.com/sabitberatceylan-cyber/Textly18.git):
     set /p REPO_URL="Repo URL: "
-    if "%REPO_URL%"=="https://github.com/sabitberatceylan-cyber/Textly18.git" (
+    if "%REPO_URL%"=="" (
         echo Repo URL bos birakilamaz!
         pause
         exit /b 1
@@ -35,7 +43,7 @@ if %errorlevel% neq 0 (
 echo.
 echo Dosyalar hazirlaniyor...
 git add .
-git commit -m "Textly v5.0.3 - Snapchat bildirimleri ve exzehub guncellemesi" || true
+git commit -m "Textly v5.0.3 guncellemesi" || true
 
 echo.
 echo GitHub'a yukleniyor (Push ediliyor)...
@@ -49,7 +57,7 @@ if %errorlevel% equ 0 (
     echo =======================================================
 ) else (
     echo.
-    echo [HATA] Yukleme basarisiz oldu. Lutfen repo linkinizi veya internet baglantinizi kontrol edin.
+    echo [HATA] Yukleme basarisiz oldu. Lutfen internet baglantinizi ve GitHub girisinizi kontrol edin.
 )
 
 pause
