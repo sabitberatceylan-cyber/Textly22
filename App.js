@@ -13,7 +13,7 @@ import { ayarlariYukle, ayarlariKaydet, ayarlariTemizle } from './lib/depolama';
 import { bildirimlerICinKurulumYap, tumBildirimleriTemizle } from './lib/bildirim';
 import * as Notifications from 'expo-notifications';
 
-const MEVCUT_VERSIYON_KODU = 503;
+const MEVCUT_VERSIYON_KODU = 504;
 const SABIT_SUNUCU_URL = 'https://exzehub.com.tr';
 
 function SoketGuncellemeDinleyici({ onYeniGuncelleme }) {
