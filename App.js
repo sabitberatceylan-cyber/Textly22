@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+
 import { View, StyleSheet, StatusBar, ActivityIndicator, BackHandler, AppState } from 'react-native';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -13,10 +14,12 @@ import { ayarlariYukle, ayarlariKaydet, ayarlariTemizle } from './lib/depolama';
 import { bildirimlerICinKurulumYap, tumBildirimleriTemizle } from './lib/bildirim';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { grupBilgiGetir } from './lib/api';
 import appConfig from './app.json';
 
 
-const MEVCUT_VERSIYON_KODU = Number(appConfig?.expo?.android?.versionCode) || 510;
+const MEVCUT_VERSIYON_KODU = Number(appConfig?.expo?.android?.versionCode) || 512;
+
 
 const SABIT_SUNUCU_URL = 'https://exzehub.com.tr';
 
@@ -65,12 +68,24 @@ function AnaIcerik() {
     })();
   }, []);
 
+  const sonIslenenBildirimRef = useRef(null);
+  const sogukAcilisKontrolEdildiRef = useRef(false);
+
   const bildirimleSohbetAc = useCallback((yanit) => {
     if (!yanit || !oturum) return;
-    tumBildirimleriTemizle();
     const veri = yanit?.notification?.request?.content?.data;
     const anahtar = veri?.anahtar || yanit?.notification?.request?.identifier?.replace('sohbet-', '');
     if (!anahtar) return;
+
+    // Aynı bildirimin tekrar tekrar açılmasını ve geri tuşuna basınca tekrar gruba girilmesini önle
+    const bildirimId = String(
+      yanit?.notification?.request?.identifier ||
+      `${anahtar}_${yanit?.notification?.date || ''}_${veri?.zaman || ''}`
+    );
+    if (sonIslenenBildirimRef.current === bildirimId) return;
+    sonIslenenBildirimRef.current = bildirimId;
+
+    tumBildirimleriTemizle();
 
     if (anahtar.startsWith('kisi:')) {
       const kisiAdi = anahtar.replace('kisi:', '');
@@ -114,6 +129,27 @@ function AnaIcerik() {
           }
         })
         .catch(() => {});
+
+      // Sunucudan taze grup detaylarını anında al
+      grupBilgiGetir(oturum.sunucuAdres, oturum.kullanici, oturum.sifre, grupId)
+        .then((res) => {
+          if (res && res.tamam && res.grup) {
+            setAktifSohbet((mevcut) => {
+              if (mevcut && String(mevcut.hedef) === String(grupId)) {
+                return {
+                  ...mevcut,
+                  baslik: res.grup.isim || mevcut.baslik,
+                  uyeler: res.grup.uyeler || [],
+                  yonetici: res.grup.yonetici,
+                  yoneticiler: Array.isArray(res.grup.yoneticiler) ? res.grup.yoneticiler : (res.grup.yonetici ? [res.grup.yonetici] : []),
+                  resimUrl: res.grup.resimUrl || mevcut.resimUrl,
+                };
+              }
+              return mevcut;
+            });
+          }
+        })
+        .catch(() => {});
     }
   }, [oturum]);
 
@@ -130,20 +166,24 @@ function AnaIcerik() {
       bildirimleSohbetAc(yanit);
     });
 
-    // Soğuk açılış (cold start): Uygulama kapalıyken bildirime tıklandıysa
-    Notifications.getLastNotificationResponseAsync()
-      .then((yanit) => {
-        if (yanit) {
-          bildirimleSohbetAc(yanit);
-        }
-      })
-      .catch(() => {});
+    // Soğuk açılış (cold start): Uygulama kapalıyken bildirime tıklandıysa SADECE BİR KEZ çalıştır
+    if (!sogukAcilisKontrolEdildiRef.current && oturum) {
+      sogukAcilisKontrolEdildiRef.current = true;
+      Notifications.getLastNotificationResponseAsync()
+        .then((yanit) => {
+          if (yanit) {
+            bildirimleSohbetAc(yanit);
+          }
+        })
+        .catch(() => {});
+    }
 
     return () => {
       abonelik.remove();
       bildirimTiklamaAbonelik.remove();
     };
-  }, [bildirimleSohbetAc]);
+  }, [bildirimleSohbetAc, oturum]);
+
 
 
   useEffect(() => {

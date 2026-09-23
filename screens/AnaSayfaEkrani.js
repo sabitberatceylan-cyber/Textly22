@@ -253,6 +253,7 @@ export default function AnaSayfaEkrani({
     yaziyorlar,
     mesajGonder,
     gizlenenSohbetler,
+    sohbetTemizlemeZamanlari,
     sonZamanlariGuncelle,
     okunmamislariGuncelle,
     gruplar,
@@ -826,14 +827,26 @@ export default function AnaSayfaEkrani({
   }, [kullanicilar, sonMesajZamanlari, gizlenenSohbetler]);
 
   const siraliGruplar = useMemo(() => {
+    const benKucuk = (kullanici || '').trim().toLowerCase();
     return (gruplar || [])
-      .filter((g) => g && g.id && !(gizlenenSohbetler || []).includes(grupAnahtari(g.id)))
+      .filter((g) => {
+        if (!g || !g.id) return false;
+        const uyeler = Array.isArray(g.uyeler) ? g.uyeler : [];
+        if (!uyeler.some((u) => (u || '').trim().toLowerCase() === benKucuk)) return false;
+        const anahtar = grupAnahtari(g.id);
+        const temizlemeZamani = sohbetTemizlemeZamanlari?.[anahtar] || 0;
+        const sonMesajZamani = sonMesajZamanlari[anahtar] || g?.sonMesajZamani || 0;
+        if ((gizlenenSohbetler || []).includes(anahtar)) {
+          if (!sonMesajZamani || sonMesajZamani <= temizlemeZamani) return false;
+        }
+        return true;
+      })
       .sort((a, b) => {
         const tA = sonMesajZamanlari[grupAnahtari(a.id)] || a?.sonMesajZamani || a?.olusturuldu || 0;
         const tB = sonMesajZamanlari[grupAnahtari(b.id)] || b?.sonMesajZamani || b?.olusturuldu || 0;
         return tB - tA;
       });
-  }, [gruplar, sonMesajZamanlari, gizlenenSohbetler]);
+  }, [gruplar, sonMesajZamanlari, gizlenenSohbetler, sohbetTemizlemeZamanlari, kullanici]);
 
   // Arama filtreleme
   const aramaAktif = aramaMetni.trim().length > 0;
@@ -918,6 +931,7 @@ export default function AnaSayfaEkrani({
   // ----------------------------------------------------
   function kisiSatiriRender({ item }) {
     const anahtar = kisiAnahtari(item.kullanici);
+    const temizlemeZamani = sohbetTemizlemeZamanlari?.[anahtar] || 0;
     const okunmamis = (okunmamisSayilar && okunmamisSayilar[anahtar] !== undefined)
       ? okunmamisSayilar[anahtar]
       : (item.okunmamisSayisi || 0);
@@ -926,9 +940,17 @@ export default function AnaSayfaEkrani({
     const yaziyorMu = !!(yaziyorlar && yaziyorlar[anahtar] && yaziyorlar[anahtar][item.kullanici]);
 
     // Son gönderilen mesajın önizlemesi (canlı soket, depo veya sunucu)
-    const depoMesajlari = mesajDeposu && mesajDeposu[anahtar];
-    const sonDepoMesaji = depoMesajlari && depoMesajlari.length > 0 ? depoMesajlari[depoMesajlari.length - 1] : null;
-    const gercekSonMesaj = (sonMesajlar && sonMesajlar[anahtar]) || sonDepoMesaji || item.sonMesaj;
+    const depoMesajlari = (mesajDeposu && mesajDeposu[anahtar]) || [];
+    const gecerliDepoMesajlari = temizlemeZamani
+      ? depoMesajlari.filter((m) => (m.zaman || 0) > temizlemeZamani)
+      : depoMesajlari;
+    const sonDepoMesaji = gecerliDepoMesajlari.length > 0 ? gecerliDepoMesajlari[gecerliDepoMesajlari.length - 1] : null;
+
+    let hamSonMesaj = (sonMesajlar && sonMesajlar[anahtar]) || sonDepoMesaji || item.sonMesaj;
+    if (hamSonMesaj && (hamSonMesaj.zaman || 0) <= temizlemeZamani) {
+      hamSonMesaj = null;
+    }
+    const gercekSonMesaj = hamSonMesaj;
 
     let sonMesajMetin = null;
     if (gercekSonMesaj) {
@@ -1014,6 +1036,7 @@ export default function AnaSayfaEkrani({
   // ----------------------------------------------------
   function grupSatiriRender({ item }) {
     const anahtar = grupAnahtari(item.id);
+    const temizlemeZamani = sohbetTemizlemeZamanlari?.[anahtar] || 0;
     const gBilgi = grupBilgileri && grupBilgileri[item.id];
     const gIsim = gBilgi?.isim || item?.isim || 'Grup';
     const gResim = gBilgi?.resimUrl || item?.resimUrl || null;
@@ -1031,9 +1054,17 @@ export default function AnaSayfaEkrani({
     const grupYaziyorMetni = grupYazanlar.length > 0 ? `${grupYazanlar[0]} yazıyor...` : null;
 
     let grupSonMesajMetin = null;
-    const depoMesajlari = mesajDeposu && mesajDeposu[anahtar];
-    const sonDepoMesaji = depoMesajlari && depoMesajlari.length > 0 ? depoMesajlari[depoMesajlari.length - 1] : null;
-    const gercekSonMesaj = (sonMesajlar && sonMesajlar[anahtar]) || sonDepoMesaji || item.sonMesaj;
+    const depoMesajlari = (mesajDeposu && mesajDeposu[anahtar]) || [];
+    const gecerliDepoMesajlari = temizlemeZamani
+      ? depoMesajlari.filter((m) => (m.zaman || 0) > temizlemeZamani)
+      : depoMesajlari;
+    const sonDepoMesaji = gecerliDepoMesajlari.length > 0 ? gecerliDepoMesajlari[gecerliDepoMesajlari.length - 1] : null;
+
+    let hamSonMesaj = (sonMesajlar && sonMesajlar[anahtar]) || sonDepoMesaji || item.sonMesaj;
+    if (hamSonMesaj && (hamSonMesaj.zaman || 0) <= temizlemeZamani) {
+      hamSonMesaj = null;
+    }
+    const gercekSonMesaj = hamSonMesaj;
 
     if (gercekSonMesaj) {
       const benMi = (gercekSonMesaj.gonderen || '').toLowerCase() === (kullanici || '').toLowerCase();

@@ -26,7 +26,7 @@ import { useTema } from '../lib/temaBaglami';
 import {
   gecmisGetir, kullanicilariGetir, gruplariGetir, grupUyeEkle, grupUyeCikar, grupResimGuncelle,
   medyaAdresi, kullaniciEngelle, kullaniciEngeliKaldir, sessizeAl, profilGetir, grupBilgiGuncelle,
-  grupYoneticiAta, grupAyril, grupKapat,
+  grupYoneticiAta, grupAyril, grupKapat, grupBilgiGetir,
 } from '../lib/api';
 
 import { sonGorulmeMetni } from '../lib/format';
@@ -430,8 +430,9 @@ export default function SohbetEkrani({
     mesajGonder, okunduBildir, yaziyorBildir, yazmayiBiraktimBildir,
     begeniDegistir, mesajDuzenle, mesajSil, gecmisiIcinYukle, aktifSohbetAyarla, benimAdim,
     tekGorunumGorulduBildir, temaDegistirBildir, temaHaberleri, sonIslemHatasi, sohbetiGizle,
-    grupGuncelle, gruplar, gruplariAyarla,
+    grupGuncelle, gruplar, gruplariAyarla, grupBilgiGuncelleTekil, sohbetiTemizle, sohbetTemizlemeZamanlari, grupSil,
   } = useSoket();
+
 
   const insets = useSafeAreaInsets();
 
@@ -444,6 +445,7 @@ export default function SohbetEkrani({
   const [seciliUyeIslemleri, setSeciliUyeIslemleri] = useState(null);
   const [eklenebilirKullanicilar, setEklenebilirKullanicilar] = useState([]);
   const [yerelGrupResimUrl, setYerelGrupResimUrl] = useState(resimUrl || null);
+  const [yerelGrupBilgi, setYerelGrupBilgi] = useState(null);
   const [uyeAramaMetni, setUyeAramaMetni] = useState('');
 
   function buyukFotoKapat() {
@@ -498,7 +500,13 @@ export default function SohbetEkrani({
   const yazmayiBiraktimZamanlayici = useRef(null);
 
   const anahtar = hedefTuru === 'grup' ? grupAnahtari(hedef) : kisiAnahtari(hedef);
-  const mesajlarHam = mesajDeposu[anahtar] || [];
+  const temizlemeZamani = sohbetTemizlemeZamanlari?.[anahtar] || 0;
+  const mesajlarHam = useMemo(() => {
+    const ham = mesajDeposu[anahtar] || [];
+    if (!temizlemeZamani) return ham;
+    return ham.filter((m) => (m.zaman || 0) > temizlemeZamani);
+  }, [mesajDeposu, anahtar, temizlemeZamani]);
+
   const mesajlar = useMemo(
     () => mesajlarHam.map((m) => (m.medyaUrl ? { ...m, _tamMedyaUrl: medyaAdresi(sunucuAdres, kullanici, sifre, m.medyaUrl) } : m)),
     [mesajlarHam, sunucuAdres, kullanici, sifre]
@@ -509,11 +517,12 @@ export default function SohbetEkrani({
     if (hedefTuru !== 'grup') return null;
     const gId = String(hedef);
     return (
+      yerelGrupBilgi ||
       (grupBilgileri && grupBilgileri[gId]) ||
       (gruplar || []).find((g) => String(g?.id) === gId) ||
       null
     );
-  }, [hedefTuru, hedef, grupBilgileri, gruplar]);
+  }, [hedefTuru, hedef, yerelGrupBilgi, grupBilgileri, gruplar]);
 
   const canliBaslik = grupCanli?.isim || baslik || 'Grup';
   const guncelUyeler = grupCanli?.uyeler || uyeler || [];
@@ -524,7 +533,7 @@ export default function SohbetEkrani({
     if (Array.isArray(yoneticiler) && yoneticiler.length > 0) return yoneticiler;
     return guncelYonetici ? [guncelYonetici] : [];
   }, [hedefTuru, grupCanli, yoneticiler, guncelYonetici]);
-  const guncelResimUrl = yerelGrupResimUrl || grupCanli?.resimUrl || resimUrl;
+  const guncelResimUrl = grupCanli?.resimUrl || yerelGrupResimUrl || resimUrl;
 
   useEffect(() => {
     if (grupCanli?.resimUrl) {
@@ -535,15 +544,30 @@ export default function SohbetEkrani({
   // Bildirimden veya doğrudan açılışta grup bilgileri eksikse sunucudan anında tazele
   useEffect(() => {
     if (hedefTuru === 'grup') {
+      grupBilgiGetir(sunucuAdres, kullanici, sifre, hedef)
+        .then((res) => {
+          if (res && res.tamam && res.grup) {
+            setYerelGrupBilgi(res.grup);
+            if (res.grup.resimUrl) setYerelGrupResimUrl(res.grup.resimUrl);
+            if (grupBilgiGuncelleTekil) grupBilgiGuncelleTekil(res.grup);
+          }
+        })
+        .catch(() => {});
+
       gruplariGetir(sunucuAdres, kullanici, sifre)
         .then((res) => {
           if (res && res.tamam && Array.isArray(res.liste)) {
             if (gruplariAyarla) gruplariAyarla(res.liste);
+            const bul = res.liste.find((g) => String(g?.id) === String(hedef));
+            if (bul) {
+              setYerelGrupBilgi((eski) => ({ ...eski, ...bul }));
+              if (bul.resimUrl) setYerelGrupResimUrl(bul.resimUrl);
+            }
           }
         })
         .catch(() => {});
     }
-  }, [hedefTuru, sunucuAdres, kullanici, sifre, gruplariAyarla]);
+  }, [hedefTuru, hedef, sunucuAdres, kullanici, sifre, gruplariAyarla, grupBilgiGuncelleTekil]);
 
 
   const filtrelenmisEklenebilirKullanicilar = useMemo(() => {
@@ -1004,13 +1028,14 @@ export default function SohbetEkrani({
     setMenuModalAcik(false);
     setOnayDiyalog({
       baslik: 'Gruptan Çık',
-      mesaj: 'Bu gruptan çıkmak istediğinize emin misiniz?',
+      mesaj: 'Bu gruptan çıkmak istediğinize emin misiniz? Grup ve mesajları cihazınızdan tamamen silinecektir.',
       onayMetni: 'Gruptan Çık',
       tehlikeli: true,
       onOnayla: async () => {
         const res = await grupAyril(sunucuAdres, kullanici, sifre, hedef);
         if (res.tamam) {
           onGeri();
+          if (grupSil) grupSil(hedef);
         } else {
           Alert.alert('Olmadı', res.hata || 'Gruptan çıkılamadı.');
         }
@@ -1029,6 +1054,7 @@ export default function SohbetEkrani({
         const res = await grupKapat(sunucuAdres, kullanici, sifre, hedef);
         if (res.tamam) {
           onGeri();
+          if (grupSil) grupSil(hedef);
         } else {
           Alert.alert('Olmadı', res.hata || 'Grup kapatılamadı.');
         }
@@ -1040,15 +1066,20 @@ export default function SohbetEkrani({
     setMenuModalAcik(false);
     setOnayDiyalog({
       baslik: hedefTuru === 'grup' ? 'Grubu Sil' : 'Sohbeti Sil',
-      mesaj: 'Bu sohbet listeden gizlenecektir. Yeni bir mesaj geldiğinde otomatik olarak tekrar görünür.',
+      mesaj: hedefTuru === 'grup'
+        ? 'Bu grup listeden gizlenecektir ve önceki mesajlar temizlenecektir. Yeni bir mesaj geldiğinde ana sayfaya grup tekrar gelir ama eski mesajlar gelmez.'
+        : 'Bu sohbetteki tüm eski mesajlar temizlenecektir. Kişi sohbet listenizde kalmaya devam eder.',
       onayMetni: 'Sil',
       tehlikeli: true,
       onOnayla: async () => {
-        await sohbetiGizle(anahtar);
-        onGeri();
+        if (sohbetiTemizle) await sohbetiTemizle(anahtar, hedefTuru);
+        if (hedefTuru === 'grup') {
+          onGeri();
+        }
       },
     });
   }
+
 
   function alintiyaKaydir(mesajId) {
     const idx = tersMesajlar.findIndex((m) => m.id === mesajId);
@@ -1463,7 +1494,7 @@ export default function SohbetEkrani({
                 }}
               >
                 <Text style={styles.aksiyonMetni}>
-                  👁 Kim Gördü? ({(mesajMenu.item.okuyanlar || []).length})
+                  Görüldü Bilgisi
                 </Text>
               </TouchableOpacity>
             )}
@@ -1509,7 +1540,8 @@ export default function SohbetEkrani({
       <Modal visible={!!gorulduModal} animationType="fade" transparent onRequestClose={() => setGorulduModal(null)}>
         <TouchableOpacity style={styles.modalArkaplan} activeOpacity={1} onPress={() => setGorulduModal(null)}>
           <TouchableOpacity activeOpacity={1} style={[styles.modalKutu, { maxHeight: 460 }]}>
-            <Text style={[styles.modalBaslik, { marginBottom: 8 }]}>👁 Görüldü Bilgisi</Text>
+            <Text style={[styles.modalBaslik, { marginBottom: 8 }]}>Görüldü Bilgisi</Text>
+
 
             {/* Mesaj Özeti */}
             {gorulduModal?.item?.metin ? (
