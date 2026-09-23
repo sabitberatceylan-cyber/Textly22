@@ -49,21 +49,18 @@ function kayitSuresiFormatla(saniye) {
 
 function VideoOynatici({ uri, styles, insets, onKapat }) {
   const [yerelUri, setYerelUri] = useState(null);
-  const [ilerleme, setIlerleme] = useState(0);
+  const [videoYukleniyor, setVideoYukleniyor] = useState(true);
   const [hata, setHata] = useState(null);
 
   useEffect(() => {
     let aktif = true;
     (async () => {
-      const sonuc = await videoYerelGetir(uri, (p) => {
-        if (aktif) setIlerleme(p);
-      });
-      if (!aktif) return;
-      if (sonuc.tamam) {
-        setYerelUri(sonuc.yerelUri);
-      } else {
-        setHata(sonuc.hata || 'Video açılamadı');
-      }
+      try {
+        const sonuc = await videoYerelGetir(uri);
+        if (aktif && sonuc && sonuc.tamam) {
+          setYerelUri(sonuc.yerelUri);
+        }
+      } catch {}
     })();
     return () => { aktif = false; };
   }, [uri]);
@@ -73,27 +70,29 @@ function VideoOynatici({ uri, styles, insets, onKapat }) {
       <TouchableOpacity style={[styles.tamEkranKapat, { top: insets.top + 12 }]} onPress={onKapat}>
         <Text style={styles.tamEkranKapatMetni}>✕</Text>
       </TouchableOpacity>
-      {yerelUri ? (
-        <Video
-          source={{ uri: yerelUri }}
-          style={styles.tamEkranVideo}
-          useNativeControls
-          resizeMode={ResizeMode.CONTAIN}
-          shouldPlay
-        />
-      ) : hata ? (
-        <View style={{ alignItems: 'center', padding: 20 }}>
-          <Text style={{ color: '#ffffff', fontSize: 15, textAlign: 'center' }}>{hata}</Text>
-          <TouchableOpacity style={{ marginTop: 20, padding: 10 }} onPress={onKapat}>
-            <Text style={{ color: '#ffffff', textDecorationLine: 'underline' }}>Kapat</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={{ alignItems: 'center' }}>
+      <Video
+        source={{ uri: yerelUri || uri }}
+        style={styles.tamEkranVideo}
+        useNativeControls
+        resizeMode={ResizeMode.CONTAIN}
+        shouldPlay
+        onLoadStart={() => setVideoYukleniyor(true)}
+        onReadyForDisplay={() => setVideoYukleniyor(false)}
+        onError={(e) => {
+          console.warn('Video oynatma hatası:', e);
+          setVideoYukleniyor(false);
+          setHata('Video oynatılamadı.');
+        }}
+      />
+      {videoYukleniyor && (
+        <View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }]} pointerEvents="none">
           <ActivityIndicator size="large" color="#ffffff" />
-          <Text style={{ color: '#ffffff', marginTop: 14, fontSize: 14 }}>
-            {ilerleme > 0 ? `Video indiriliyor... %${Math.round(ilerleme * 100)}` : 'Video hazırlanıyor...'}
-          </Text>
+          <Text style={{ color: '#ffffff', marginTop: 14, fontSize: 14 }}>Video yükleniyor...</Text>
+        </View>
+      )}
+      {hata && (
+        <View style={{ position: 'absolute', alignSelf: 'center', bottom: 100, backgroundColor: 'rgba(0,0,0,0.7)', padding: 12, borderRadius: 8 }}>
+          <Text style={{ color: '#ff453a', fontSize: 14 }}>{hata}</Text>
         </View>
       )}
     </View>
@@ -914,7 +913,9 @@ export default function SohbetEkrani({
 
   let altYaziMetni;
   let altYaziRengi = renkler.metinSoluk;
-  if (hedefTuru === 'grup') {
+  if (benEngelledimMi) {
+    altYaziMetni = 'Engellendi';
+  } else if (hedefTuru === 'grup') {
     altYaziMetni = `${guncelUyeler.length} kişi · dokun`;
   } else if (digerYaziyorMu) {
     altYaziMetni = 'yazıyor...';

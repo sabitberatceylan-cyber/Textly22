@@ -90,7 +90,17 @@ try {
   const replacementCall = `    if (notificationContent.containsImage()) {
       val bitmap = notificationContent.getImage(context)
       val circular = bitmap?.let { getCircularBitmap(it) }
-      circular?.let { builder.setLargeIcon(it) }
+      if (circular != null) {
+        val person = androidx.core.app.Person.Builder()
+          .setName(content.title ?: "")
+          .setIcon(androidx.core.graphics.drawable.IconCompat.createWithBitmap(circular))
+          .build()
+        val messagingStyle = NotificationCompat.MessagingStyle(person)
+          .addMessage(content.text ?: "", System.currentTimeMillis(), person)
+        builder.setStyle(messagingStyle)
+      } else {
+        builder.setLargeIcon(largeIcon)
+      }
     } else {
       builder.setLargeIcon(largeIcon)
     }`;

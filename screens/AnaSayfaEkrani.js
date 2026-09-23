@@ -351,7 +351,12 @@ export default function AnaSayfaEkrani({
     const okunmamisHarita = {};
     if (kSonuc.tamam) {
       setKullanicilar(kSonuc.liste || []);
+      const yeniDurumlar = {};
       (kSonuc.liste || []).forEach((k) => {
+        yeniDurumlar[k.kullanici] = {
+          cevrimici: !!k.cevrimici,
+          sonGorulme: k.sonGorulme || null,
+        };
         if (k.sonMesajZamani) {
           harita[kisiAnahtari(k.kullanici)] = k.sonMesajZamani;
         }
@@ -359,6 +364,7 @@ export default function AnaSayfaEkrani({
           okunmamisHarita[kisiAnahtari(k.kullanici)] = k.okunmamisSayisi;
         }
       });
+      setKullaniciDurumlari((eski) => ({ ...eski, ...yeniDurumlar }));
     }
     if (gSonuc.tamam) {
       setGruplar(gSonuc.liste || []);
@@ -702,7 +708,7 @@ export default function AnaSayfaEkrani({
   }
 
   // Hikaye Paylaş (Özel Stüdyo veya Tab 3)
-  async function hikayePaylasSonuc({ secim, yaziKatmani, baslik }) {
+  async function hikayePaylasSonuc({ secim, yaziKatmani, baslik, sigdir }) {
     const medyaKaynagi = secim || yeniHikayeMedya;
     if (!medyaKaynagi) return Alert.alert('Uyarı', 'Önce bir fotoğraf veya video seçin.');
     setHikayePaylasiliyor(true);
@@ -724,7 +730,8 @@ export default function AnaSayfaEkrani({
           yukleSonuc.url,
           medyaTuru,
           hikayeMetinIcerik,
-          yaziKatmani || null
+          yaziKatmani || null,
+          sigdir
         );
       } else {
         setHikayePaylasiliyor(false);
@@ -744,7 +751,8 @@ export default function AnaSayfaEkrani({
         base64Veri,
         mimeTuru,
         hikayeMetinIcerik,
-        yaziKatmani || null
+        yaziKatmani || null,
+        sigdir
       );
     }
 
@@ -756,6 +764,7 @@ export default function AnaSayfaEkrani({
         setAktifHikayeler((eski) => [
           {
             ...res.hikaye,
+            sigdir: !!sigdir,
             profilResimUrl: benimProfil?.profilResimUrl || null,
             goruldu: true,
             goruntulenmeSayisi: 0,
@@ -865,9 +874,19 @@ export default function AnaSayfaEkrani({
       : (item.okunmamisSayisi || 0);
     const canliDurum = kullaniciDurumlari[item.kullanici];
     const cevrimici = canliDurum ? canliDurum.cevrimici : item.cevrimici;
-    const sonGorulme = canliDurum ? canliDurum.sonGorulme : item.sonGorulme;
-    const sgMetin = cevrimici ? null : sonGorulmeMetni(sonGorulme);
     const yaziyorMu = !!(yaziyorlar && yaziyorlar[anahtar] && yaziyorlar[anahtar][item.kullanici]);
+
+    // Son gönderilen mesajın önizlemesi
+    let sonMesajMetin = null;
+    if (item.sonMesaj) {
+      const benMi = (item.sonMesaj.gonderen || '').toLowerCase() === (kullanici || '').toLowerCase();
+      const onEk = benMi ? 'Sen: ' : '';
+      if (item.sonMesaj.tekGorunum) sonMesajMetin = `${onEk}📷 Tek seferlik fotoğraf`;
+      else if (item.sonMesaj.medyaTuru === 'video') sonMesajMetin = `${onEk}🎥 Video`;
+      else if (item.sonMesaj.medyaTuru === 'ses') sonMesajMetin = `${onEk}🎤 Ses mesajı`;
+      else if (item.sonMesaj.medyaTuru === 'foto') sonMesajMetin = `${onEk}📷 Fotoğraf`;
+      else if (item.sonMesaj.metin) sonMesajMetin = `${onEk}${item.sonMesaj.metin}`;
+    }
 
     return (
       <TouchableOpacity
@@ -897,10 +916,14 @@ export default function AnaSayfaEkrani({
         <View style={styles.satirOrta}>
           <Text style={styles.satirBaslik}>{item.kullanici}</Text>
           {yaziyorMu ? (
-            <Text style={[styles.satirAltyazi, { color: renkler.basarili }]}>yazıyor...</Text>
+            <Text style={[styles.satirAltyazi, { color: renkler.basarili }]} numberOfLines={1}>yazıyor...</Text>
+          ) : sonMesajMetin ? (
+            <Text style={[styles.satirAltyazi, okunmamis > 0 && { color: renkler.metin, fontWeight: '600' }]} numberOfLines={1}>
+              {sonMesajMetin}
+            </Text>
           ) : (
-            <Text style={styles.satirAltyazi}>
-              {cevrimici ? 'Çevrim içi' : sgMetin ? `Son görülme: ${sgMetin}` : 'Çevrim dışı'}
+            <Text style={[styles.satirAltyazi, { fontStyle: 'italic', opacity: 0.6 }]} numberOfLines={1}>
+              Sohbeti başlatın
             </Text>
           )}
         </View>
@@ -933,6 +956,22 @@ export default function AnaSayfaEkrani({
     const okunmamis = (okunmamisSayilar && okunmamisSayilar[anahtar] !== undefined)
       ? okunmamisSayilar[anahtar]
       : (item.okunmamisSayisi || 0);
+
+    const grupYazanlar = yaziyorlar && yaziyorlar[anahtar]
+      ? Object.keys(yaziyorlar[anahtar]).filter((u) => u.toLowerCase() !== (kullanici || '').toLowerCase())
+      : [];
+    const grupYaziyorMetni = grupYazanlar.length > 0 ? `${grupYazanlar[0]} yazıyor...` : null;
+
+    let grupSonMesajMetin = null;
+    if (item.sonMesaj) {
+      const benMi = (item.sonMesaj.gonderen || '').toLowerCase() === (kullanici || '').toLowerCase();
+      const onEk = benMi ? 'Sen: ' : `${item.sonMesaj.gonderen}: `;
+      if (item.sonMesaj.tekGorunum) grupSonMesajMetin = `${onEk}📷 Tek seferlik fotoğraf`;
+      else if (item.sonMesaj.medyaTuru === 'video') grupSonMesajMetin = `${onEk}🎥 Video`;
+      else if (item.sonMesaj.medyaTuru === 'ses') grupSonMesajMetin = `${onEk}🎤 Ses mesajı`;
+      else if (item.sonMesaj.medyaTuru === 'foto') grupSonMesajMetin = `${onEk}📷 Fotoğraf`;
+      else if (item.sonMesaj.metin) grupSonMesajMetin = `${onEk}${item.sonMesaj.metin}`;
+    }
 
     return (
       <TouchableOpacity
@@ -970,7 +1009,15 @@ export default function AnaSayfaEkrani({
 
         <View style={styles.satirOrta}>
           <Text style={styles.satirBaslik}>{item?.isim || 'Grup'}</Text>
-          <Text style={styles.satirAltyazi}>{(item?.uyeler || []).length} üye</Text>
+          {grupYaziyorMetni ? (
+            <Text style={[styles.satirAltyazi, { color: renkler.basarili }]} numberOfLines={1}>{grupYaziyorMetni}</Text>
+          ) : grupSonMesajMetin ? (
+            <Text style={[styles.satirAltyazi, okunmamis > 0 && { color: renkler.metin, fontWeight: '600' }]} numberOfLines={1}>
+              {grupSonMesajMetin}
+            </Text>
+          ) : (
+            <Text style={styles.satirAltyazi} numberOfLines={1}>{(item?.uyeler || []).length} üye</Text>
+          )}
         </View>
 
         {okunmamis > 0 && (
@@ -1569,18 +1616,33 @@ export default function AnaSayfaEkrani({
             {/* Medya İçeriği */}
             <View style={styles.hikayeMedyaAlani}>
               {seciliHikaye.medyaTuru === 'video' ? (
-                <View style={{ width: EKRAN_GENISLIK, height: EKRAN_YUKSEKLIK * 0.75, justifyContent: 'center', alignItems: 'center' }}>
+                <View style={{ width: EKRAN_GENISLIK, height: EKRAN_YUKSEKLIK, justifyContent: 'center', alignItems: 'center' }}>
+                  {seciliHikaye.sigdir && (
+                    <>
+                      <Image
+                        source={{ uri: medyaAdresi(sunucuAdres, kullanici, sifre, seciliHikaye.medyaUrl) }}
+                        style={[StyleSheet.absoluteFillObject, { width: EKRAN_GENISLIK, height: EKRAN_YUKSEKLIK, opacity: 0.45 }]}
+                        blurRadius={24}
+                        resizeMode="cover"
+                      />
+                      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
+                    </>
+                  )}
                   <Video
                     key={`hikaye-vid-${seciliHikaye.id}`}
                     source={{ uri: aktifVideoUri || medyaAdresi(sunucuAdres, kullanici, sifre, seciliHikaye.medyaUrl) }}
-                    style={{ width: EKRAN_GENISLIK, height: EKRAN_YUKSEKLIK * 0.75 }}
-                    resizeMode={ResizeMode.CONTAIN}
+                    style={{ width: EKRAN_GENISLIK, height: EKRAN_YUKSEKLIK }}
+                    resizeMode={seciliHikaye.sigdir ? ResizeMode.CONTAIN : ResizeMode.COVER}
                     shouldPlay={!goruntuleyenlerModalAcik}
                     isLooping={false}
                     useNativeControls={false}
                     progressUpdateIntervalMillis={50}
                     onLoadStart={() => setVideoYukleniyor(true)}
                     onReadyForDisplay={() => setVideoYukleniyor(false)}
+                    onError={(e) => {
+                      console.warn('Hikaye video hatası:', e);
+                      setVideoYukleniyor(false);
+                    }}
                     onPlaybackStatusUpdate={(status) => {
                       if (!status.isLoaded) return;
                       if (status.isPlaying && videoYukleniyor) {
@@ -1602,11 +1664,24 @@ export default function AnaSayfaEkrani({
                   )}
                 </View>
               ) : (
-                <Image
-                  source={{ uri: medyaAdresi(sunucuAdres, kullanici, sifre, seciliHikaye.medyaUrl) }}
-                  style={{ width: EKRAN_GENISLIK, height: EKRAN_YUKSEKLIK }}
-                  resizeMode="cover"
-                />
+                <View style={{ width: EKRAN_GENISLIK, height: EKRAN_YUKSEKLIK, justifyContent: 'center', alignItems: 'center' }}>
+                  {seciliHikaye.sigdir && (
+                    <>
+                      <Image
+                        source={{ uri: medyaAdresi(sunucuAdres, kullanici, sifre, seciliHikaye.medyaUrl) }}
+                        style={[StyleSheet.absoluteFillObject, { width: EKRAN_GENISLIK, height: EKRAN_YUKSEKLIK, opacity: 0.45 }]}
+                        blurRadius={24}
+                        resizeMode="cover"
+                      />
+                      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
+                    </>
+                  )}
+                  <Image
+                    source={{ uri: medyaAdresi(sunucuAdres, kullanici, sifre, seciliHikaye.medyaUrl) }}
+                    style={{ width: EKRAN_GENISLIK, height: EKRAN_YUKSEKLIK }}
+                    resizeMode={seciliHikaye.sigdir ? 'contain' : 'cover'}
+                  />
+                </View>
               )}
             </View>
 

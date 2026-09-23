@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
+import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { bosluk } from '../theme';
 
@@ -43,9 +44,18 @@ export default function OzelMedyaDuzenleyici({
   medya, // { uri, tur: 'foto' | 'video', base64, mimeTuru }
   mod = 'sohbet', // 'sohbet' | 'hikaye'
   onKapat,
-  onGonder, // ({ secim, yaziKatmani, baslik, tekGorunum }) => void
+  onGonder, // ({ secim, yaziKatmani, baslik, tekGorunum, sigdir }) => void
 }) {
   const insets = useSafeAreaInsets();
+
+  // Aktif Medya ve Sığdır Modu
+  const [aktifMedya, setAktifMedya] = useState(medya);
+  const [sigdir, setSigdir] = useState(false);
+
+  useEffect(() => {
+    setAktifMedya(medya);
+    setSigdir(false);
+  }, [medya]);
 
   // Metin Düzenleme State'leri
   const [yaziDuzenlemeAcik, setYaziDuzenlemeAcik] = useState(false);
@@ -86,7 +96,7 @@ export default function OzelMedyaDuzenleyici({
     [yaziDuzenlemeAcik, yaziMetni, pan]
   );
 
-  if (!visible || !medya) return null;
+  if (!visible || !medya || !aktifMedya) return null;
 
   const aktifArkaplanModu = ARKA_PLAN_MODLARI[arkaplanModuIndex].id;
 
@@ -96,6 +106,26 @@ export default function OzelMedyaDuzenleyici({
 
   function yaziDuzenlemeBitir() {
     setYaziDuzenlemeAcik(false);
+  }
+
+  async function kirpmaBaslat() {
+    try {
+      const sonuc = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.95,
+      });
+      if (!sonuc.canceled && sonuc.assets && sonuc.assets[0]) {
+        setAktifMedya((prev) => ({
+          ...prev,
+          uri: sonuc.assets[0].uri,
+          mimeTuru: sonuc.assets[0].mimeType || 'image/jpeg',
+          tur: 'foto',
+        }));
+      }
+    } catch (e) {
+      console.warn('Kırpma açılamadı:', e.message);
+    }
   }
 
   function gonder() {
@@ -110,10 +140,11 @@ export default function OzelMedyaDuzenleyici({
       : null;
 
     onGonder({
-      secim: medya,
+      secim: aktifMedya,
       yaziKatmani,
       baslik: altBaslik.trim(),
       tekGorunum,
+      sigdir,
     });
   }
 
@@ -176,20 +207,35 @@ export default function OzelMedyaDuzenleyici({
     <Modal visible={visible} animationType="fade" transparent={false} onRequestClose={onKapat}>
       <StatusBar hidden />
       <View style={styles.kok}>
-        {/* Medya Görüntüleyici (Instagram Hikayeleri Gibi Dikey Tam Ekran) */}
+        {/* Medya Görüntüleyici */}
         <View style={styles.medyaKonteyner}>
-          {medya.tur === 'video' ? (
+          {sigdir && (
+            <>
+              <Image
+                source={{ uri: aktifMedya.uri }}
+                style={styles.sigdirBulanikArkaplan}
+                blurRadius={24}
+                resizeMode="cover"
+              />
+              <View style={styles.sigdirKarartma} />
+            </>
+          )}
+          {aktifMedya.tur === 'video' ? (
             <Video
-              source={{ uri: medya.uri }}
+              source={{ uri: aktifMedya.uri }}
               style={styles.tamEkranMedya}
-              resizeMode={ResizeMode.COVER}
+              resizeMode={sigdir ? ResizeMode.CONTAIN : ResizeMode.COVER}
               isLooping
               shouldPlay
               isMuted={false}
               useNativeControls={false}
             />
           ) : (
-            <Image source={{ uri: medya.uri }} style={styles.tamEkranMedya} resizeMode="cover" />
+            <Image
+              source={{ uri: aktifMedya.uri }}
+              style={styles.tamEkranMedya}
+              resizeMode={sigdir ? 'contain' : 'cover'}
+            />
           )}
         </View>
 
@@ -220,6 +266,26 @@ export default function OzelMedyaDuzenleyici({
             </TouchableOpacity>
 
             <View style={styles.ustSagGrup}>
+              {/* Sığdır / Doldur Butonu */}
+              <TouchableOpacity
+                style={[styles.ustIkonButon, sigdir && styles.ustIkonAktif]}
+                onPress={() => setSigdir((prev) => !prev)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.ustIkonMetin}>{sigdir ? '⤢' : '📐'}</Text>
+              </TouchableOpacity>
+
+              {/* Kırpma Butonu (Fotoğraflar için) */}
+              {aktifMedya.tur !== 'video' && (
+                <TouchableOpacity
+                  style={styles.ustIkonButon}
+                  onPress={kirpmaBaslat}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.ustIkonMetin}>✂</Text>
+                </TouchableOpacity>
+              )}
+
               {/* Metin Aracı Butonu */}
               <TouchableOpacity
                 style={[styles.ustIkonButon, yaziMetni.trim() && styles.ustIkonAktif]}
@@ -332,6 +398,16 @@ const styles = StyleSheet.create({
   tamEkranMedya: {
     width: EKRAN_GENISLIK,
     height: EKRAN_YUKSEKLIK,
+  },
+  sigdirBulanikArkaplan: {
+    ...StyleSheet.absoluteFillObject,
+    width: EKRAN_GENISLIK,
+    height: EKRAN_YUKSEKLIK,
+    opacity: 0.55,
+  },
+  sigdirKarartma: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   ustBar: {
     position: 'absolute',
