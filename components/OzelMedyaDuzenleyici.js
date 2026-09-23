@@ -1188,6 +1188,8 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
                 <View {...panSagAlt.panHandlers} style={[styles.tutamacKose, styles.tutamacSagAlt]} />
               </View>
             </View>
+          ) : (
+            <ActivityIndicator size="large" color="#00a8ff" />
           )}
         </View>
 
