@@ -12,9 +12,12 @@ import { TemaSaglayici, useTema } from './lib/temaBaglami';
 import { ayarlariYukle, ayarlariKaydet, ayarlariTemizle } from './lib/depolama';
 import { bildirimlerICinKurulumYap, tumBildirimleriTemizle } from './lib/bildirim';
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import appConfig from './app.json';
 
-const MEVCUT_VERSIYON_KODU = Number(appConfig?.expo?.android?.versionCode) || 509;
+
+const MEVCUT_VERSIYON_KODU = Number(appConfig?.expo?.android?.versionCode) || 510;
+
 const SABIT_SUNUCU_URL = 'https://exzehub.com.tr';
 
 function SoketGuncellemeDinleyici({ onYeniGuncelleme }) {
@@ -62,6 +65,58 @@ function AnaIcerik() {
     })();
   }, []);
 
+  const bildirimleSohbetAc = useCallback((yanit) => {
+    if (!yanit || !oturum) return;
+    tumBildirimleriTemizle();
+    const veri = yanit?.notification?.request?.content?.data;
+    const anahtar = veri?.anahtar || yanit?.notification?.request?.identifier?.replace('sohbet-', '');
+    if (!anahtar) return;
+
+    if (anahtar.startsWith('kisi:')) {
+      const kisiAdi = anahtar.replace('kisi:', '');
+      setAktifSohbet({ hedefTuru: 'kisi', hedef: kisiAdi, baslik: kisiAdi });
+      setEkran('sohbet');
+    } else if (anahtar.startsWith('grup:')) {
+      const grupId = anahtar.replace('grup:', '');
+      const bildirimBaslik = veri?.grupIsim || veri?.title || yanit?.notification?.request?.content?.title || 'Grup';
+      const bildirimResim = veri?.imageUrl || veri?.profilResimUrl || null;
+
+      // İlk olarak bildirimdeki bilgilerle hemen aç
+      setAktifSohbet({
+        hedefTuru: 'grup',
+        hedef: grupId,
+        baslik: bildirimBaslik,
+        resimUrl: bildirimResim,
+      });
+      setEkran('sohbet');
+
+      // Ardından yerel grup önbelleğinden detayları (üyeler, yöneticiler, resim vb.) yükle
+      AsyncStorage.getItem(`@textly_gruplar_cache_${oturum.kullanici}`)
+        .then((raw) => {
+          if (raw) {
+            const list = JSON.parse(raw);
+            const bul = (list || []).find((g) => String(g?.id) === String(grupId));
+            if (bul) {
+              setAktifSohbet((mevcut) => {
+                if (mevcut && String(mevcut.hedef) === String(grupId)) {
+                  return {
+                    ...mevcut,
+                    baslik: bul.isim || mevcut.baslik,
+                    uyeler: bul.uyeler || [],
+                    yonetici: bul.yonetici,
+                    yoneticiler: Array.isArray(bul.yoneticiler) ? bul.yoneticiler : (bul.yonetici ? [bul.yonetici] : []),
+                    resimUrl: bul.resimUrl || mevcut.resimUrl,
+                  };
+                }
+                return mevcut;
+              });
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [oturum]);
+
   // Uygulama açıldığında, bildirim tıklandığında ve arka plandan öne geldiğinde bildirimleri temizle
   useEffect(() => {
     tumBildirimleriTemizle();
@@ -72,27 +127,24 @@ function AnaIcerik() {
     });
 
     const bildirimTiklamaAbonelik = Notifications.addNotificationResponseReceivedListener((yanit) => {
-      tumBildirimleriTemizle();
-      const veri = yanit?.notification?.request?.content?.data;
-      const anahtar = veri?.anahtar || yanit?.notification?.request?.identifier?.replace('sohbet-', '');
-      if (anahtar && oturum) {
-        if (anahtar.startsWith('kisi:')) {
-          const kisiAdi = anahtar.replace('kisi:', '');
-          setAktifSohbet({ hedefTuru: 'kisi', hedef: kisiAdi, baslik: kisiAdi });
-          setEkran('sohbet');
-        } else if (anahtar.startsWith('grup:')) {
-          const grupId = anahtar.replace('grup:', '');
-          setAktifSohbet({ hedefTuru: 'grup', hedef: grupId, baslik: 'Grup' });
-          setEkran('sohbet');
-        }
-      }
+      bildirimleSohbetAc(yanit);
     });
+
+    // Soğuk açılış (cold start): Uygulama kapalıyken bildirime tıklandıysa
+    Notifications.getLastNotificationResponseAsync()
+      .then((yanit) => {
+        if (yanit) {
+          bildirimleSohbetAc(yanit);
+        }
+      })
+      .catch(() => {});
 
     return () => {
       abonelik.remove();
       bildirimTiklamaAbonelik.remove();
     };
-  }, [oturum]);
+  }, [bildirimleSohbetAc]);
+
 
   useEffect(() => {
     if (oturum) {
