@@ -27,8 +27,11 @@ import {
   gruplariGetir,
   grupOlustur,
   medyaAdresi,
+  medyaYukle,
+  dosyaYukleDirekt,
   hikayeleriGetir,
   hikayeEkle,
+  hikayeEkleUrl,
   hikayeGorulduBildir,
   hikayeSil,
   profilGetir,
@@ -249,6 +252,7 @@ export default function AnaSayfaEkrani({
     mesajGonder,
     gizlenenSohbetler,
     sonZamanlariGuncelle,
+    okunmamislariGuncelle,
   } = useSoket();
 
   // 4 Bottom Tabs: 'sohbetler' | 'kesfet' | 'hikayeEkle' | 'profil'
@@ -344,11 +348,15 @@ export default function AnaSayfaEkrani({
       gruplariGetir(sunucuAdres, kullanici, sifre),
     ]);
     const harita = {};
+    const okunmamisHarita = {};
     if (kSonuc.tamam) {
       setKullanicilar(kSonuc.liste || []);
       (kSonuc.liste || []).forEach((k) => {
         if (k.sonMesajZamani) {
           harita[kisiAnahtari(k.kullanici)] = k.sonMesajZamani;
+        }
+        if (typeof k.okunmamisSayisi === 'number') {
+          okunmamisHarita[kisiAnahtari(k.kullanici)] = k.okunmamisSayisi;
         }
       });
     }
@@ -358,12 +366,18 @@ export default function AnaSayfaEkrani({
         if (g.sonMesajZamani) {
           harita[grupAnahtari(g.id)] = g.sonMesajZamani;
         }
+        if (typeof g.okunmamisSayisi === 'number') {
+          okunmamisHarita[grupAnahtari(g.id)] = g.okunmamisSayisi;
+        }
       });
     }
     if (Object.keys(harita).length > 0 && sonZamanlariGuncelle) {
       sonZamanlariGuncelle(harita);
     }
-  }, [sunucuAdres, kullanici, sifre, sonZamanlariGuncelle]);
+    if (Object.keys(okunmamisHarita).length > 0 && okunmamislariGuncelle) {
+      okunmamislariGuncelle(okunmamisHarita);
+    }
+  }, [sunucuAdres, kullanici, sifre, sonZamanlariGuncelle, okunmamislariGuncelle]);
 
   // Video hikayelerini yerel önbelleğe alma (Gecikmesiz / Anında başlatma)
   const videoOnbellekHaritasi = useRef(new Map()).current;
@@ -692,22 +706,50 @@ export default function AnaSayfaEkrani({
     const medyaKaynagi = secim || yeniHikayeMedya;
     if (!medyaKaynagi) return Alert.alert('Uyarı', 'Önce bir fotoğraf veya video seçin.');
     setHikayePaylasiliyor(true);
-    const base64Veri = await medyayiBase64Yap(medyaKaynagi);
-    if (!base64Veri) {
-      setHikayePaylasiliyor(false);
-      return Alert.alert('Hata', 'Medya dosyası okunamadı.');
+
+    const mimeTuru = medyaKaynagi.mimeTuru || (medyaKaynagi.tur === 'video' ? 'video/mp4' : 'image/jpeg');
+    const medyaTuru = (medyaKaynagi.tur === 'video' || (mimeTuru && mimeTuru.startsWith('video'))) ? 'video' : 'foto';
+    const hikayeMetinIcerik = baslik !== undefined ? baslik : yeniHikayeMetin;
+
+    let res = null;
+
+    // 1. Dosya URI'si varsa doğrudan streaming (uploadAsync) ile yükle - bellekte OOM olmaz, videolar ve fotolar için sorunsuz
+    if (medyaKaynagi.uri) {
+      const yukleSonuc = await dosyaYukleDirekt(sunucuAdres, kullanici, sifre, medyaKaynagi.uri, mimeTuru);
+      if (yukleSonuc.tamam) {
+        res = await hikayeEkleUrl(
+          sunucuAdres,
+          kullanici,
+          sifre,
+          yukleSonuc.url,
+          medyaTuru,
+          hikayeMetinIcerik,
+          yaziKatmani || null
+        );
+      } else {
+        setHikayePaylasiliyor(false);
+        return Alert.alert('Hata', yukleSonuc.hata || 'Dosya sunucuya yüklenemedi.');
+      }
+    } else {
+      // 2. URI yoksa base64 ile yükle
+      const base64Veri = await medyayiBase64Yap(medyaKaynagi);
+      if (!base64Veri) {
+        setHikayePaylasiliyor(false);
+        return Alert.alert('Hata', 'Medya dosyası okunamadı.');
+      }
+      res = await hikayeEkle(
+        sunucuAdres,
+        kullanici,
+        sifre,
+        base64Veri,
+        mimeTuru,
+        hikayeMetinIcerik,
+        yaziKatmani || null
+      );
     }
-    const res = await hikayeEkle(
-      sunucuAdres,
-      kullanici,
-      sifre,
-      base64Veri,
-      medyaKaynagi.mimeTuru || (medyaKaynagi.tur === 'video' ? 'video/mp4' : 'image/jpeg'),
-      baslik !== undefined ? baslik : yeniHikayeMetin,
-      yaziKatmani || null
-    );
+
     setHikayePaylasiliyor(false);
-    if (res.tamam) {
+    if (res && res.tamam) {
       setYeniHikayeMedya(null);
       setYeniHikayeMetin('');
       if (res.hikaye) {
@@ -725,7 +767,7 @@ export default function AnaSayfaEkrani({
       setAktifTab('sohbetler');
       hikayeleriYukle();
     } else {
-      Alert.alert('Hata', res.hata || 'Hikaye paylaşılamadı');
+      Alert.alert('Hata', res?.hata || 'Hikaye paylaşılamadı');
     }
   }
 
@@ -818,7 +860,9 @@ export default function AnaSayfaEkrani({
   // ----------------------------------------------------
   function kisiSatiriRender({ item }) {
     const anahtar = kisiAnahtari(item.kullanici);
-    const okunmamis = okunmamisSayilar[anahtar] || 0;
+    const okunmamis = (okunmamisSayilar && okunmamisSayilar[anahtar] !== undefined)
+      ? okunmamisSayilar[anahtar]
+      : (item.okunmamisSayisi || 0);
     const canliDurum = kullaniciDurumlari[item.kullanici];
     const cevrimici = canliDurum ? canliDurum.cevrimici : item.cevrimici;
     const sonGorulme = canliDurum ? canliDurum.sonGorulme : item.sonGorulme;
@@ -886,7 +930,9 @@ export default function AnaSayfaEkrani({
   // ----------------------------------------------------
   function grupSatiriRender({ item }) {
     const anahtar = grupAnahtari(item.id);
-    const okunmamis = okunmamisSayilar[anahtar] || 0;
+    const okunmamis = (okunmamisSayilar && okunmamisSayilar[anahtar] !== undefined)
+      ? okunmamisSayilar[anahtar]
+      : (item.okunmamisSayisi || 0);
 
     return (
       <TouchableOpacity
