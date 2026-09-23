@@ -18,7 +18,7 @@ import { grupBilgiGetir } from './lib/api';
 import appConfig from './app.json';
 
 
-const MEVCUT_VERSIYON_KODU = Number(appConfig?.expo?.android?.versionCode) || 512;
+const MEVCUT_VERSIYON_KODU = Number(appConfig?.expo?.android?.versionCode) || 514;
 
 
 const SABIT_SUNUCU_URL = 'https://exzehub.com.tr';

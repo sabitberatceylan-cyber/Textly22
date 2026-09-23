@@ -15,6 +15,7 @@ import {
   Animated,
   Dimensions,
   ScrollView,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
@@ -461,6 +462,18 @@ export default function AnaSayfaEkrani({
     hikayeleriYukle();
     profilYukle();
   }, [veriyiYukle, hikayeleriYukle, profilYukle, grupGuncellemeSayaci]);
+
+  useEffect(() => {
+    const altAbonelik = AppState.addEventListener('change', (durum) => {
+      if (durum === 'active') {
+        veriyiYukle();
+        hikayeleriYukle();
+      }
+    });
+    return () => {
+      altAbonelik.remove();
+    };
+  }, [veriyiYukle, hikayeleriYukle]);
 
   async function yenile() {
     if (yenileniyor) return;
