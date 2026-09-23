@@ -843,6 +843,21 @@ export default function AnaSayfaEkrani({
     return siraliGruplar.filter((g) => (g?.isim || '').toLowerCase().includes(q));
   }, [siraliGruplar, aramaMetni, aramaAktif]);
 
+  // Tüm Sohbetler (Kişiler ve Gruplar BİR ARADA, en son mesaja göre sıralı)
+  const tumSohbetler = useMemo(() => {
+    const birlesik = [
+      ...(filtrelenmisGruplar || []).map((g) => ({ ...g, _sohbetTuru: 'grup' })),
+      ...(filtrelenmisKisiler || []).map((k) => ({ ...k, _sohbetTuru: 'kisi' })),
+    ];
+    return birlesik.sort((a, b) => {
+      const keyA = a._sohbetTuru === 'grup' ? grupAnahtari(a.id) : kisiAnahtari(a.kullanici);
+      const keyB = b._sohbetTuru === 'grup' ? grupAnahtari(b.id) : kisiAnahtari(b.kullanici);
+      const tA = sonMesajZamanlari[keyA] || a.sonMesajZamani || 0;
+      const tB = sonMesajZamanlari[keyB] || b.sonMesajZamani || 0;
+      return tB - tA;
+    });
+  }, [filtrelenmisGruplar, filtrelenmisKisiler, sonMesajZamanlari]);
+
   // Kullanıcının kendi 24s hikayeleri (eskiden yeniye kronolojik)
   const benimAktifHikayelerim = useMemo(() => {
     return aktifHikayeler
@@ -1252,24 +1267,44 @@ export default function AnaSayfaEkrani({
             refreshControl={<RefreshControl refreshing={yenileniyor} onRefresh={yenile} tintColor={renkler.metin} />}
             contentContainerStyle={{ paddingBottom: 80 }}
           >
-            {(sohbetFiltresi === 'hepsi' || sohbetFiltresi === 'kisiler') && (
+            {sohbetFiltresi === 'hepsi' && (
               <>
-                {sohbetFiltresi === 'hepsi' && filtrelenmisGruplar.length > 0 && filtrelenmisKisiler.length > 0 && (
-                  <Text style={styles.bolumBaslik}>KİŞİLER</Text>
+                {tumSohbetler.map((item) =>
+                  item._sohbetTuru === 'grup' ? (
+                    <View key={`grup-${item.id}`}>{grupSatiriRender({ item })}</View>
+                  ) : (
+                    <View key={`kisi-${item.kullanici}`}>{kisiSatiriRender({ item })}</View>
+                  )
                 )}
+              </>
+            )}
+
+            {sohbetFiltresi === 'kisiler' && (
+              <>
                 {filtrelenmisKisiler.map((item) => (
-                  <View key={item.kullanici}>{kisiSatiriRender({ item })}</View>
+                  <View key={`kisi-${item.kullanici}`}>{kisiSatiriRender({ item })}</View>
                 ))}
               </>
             )}
 
-            {(sohbetFiltresi === 'hepsi' || sohbetFiltresi === 'gruplar') && (
+            {sohbetFiltresi === 'gruplar' && (
               <>
-                {sohbetFiltresi === 'hepsi' && filtrelenmisGruplar.length > 0 && (
-                  <Text style={styles.bolumBaslik}>GRUPLAR</Text>
-                )}
+                <TouchableOpacity
+                  style={[styles.grupOlusturKarti, { borderColor: renkler.cizgi, backgroundColor: renkler.yuzey }]}
+                  onPress={() => setGrupOlusturAcik(true)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.grupOlusturKartiIkon, { backgroundColor: (renkler.vurgu || '#00a8ff') + '22' }]}>
+                    <Text style={{ fontSize: 22, color: renkler.vurgu || '#00a8ff', fontWeight: 'bold' }}>+</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: renkler.metin, fontSize: 15, fontWeight: '700' }}>Yeni Grup Oluştur</Text>
+                    <Text style={{ color: renkler.metinSoluk, fontSize: 12 }}>Arkadaşlarınla grup sohbeti başlat</Text>
+                  </View>
+                </TouchableOpacity>
+
                 {filtrelenmisGruplar.map((item) => (
-                  <View key={item.id}>{grupSatiriRender({ item })}</View>
+                  <View key={`grup-${item.id}`}>{grupSatiriRender({ item })}</View>
                 ))}
               </>
             )}
@@ -2383,6 +2418,24 @@ function olusturStiller(renkler) {
       paddingVertical: 6,
     },
     grupOlusturMetin: { color: renkler.metin, fontSize: 13, fontWeight: '600' },
+    grupOlusturKarti: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 14,
+      marginHorizontal: bosluk.md,
+      marginTop: 10,
+      marginBottom: 6,
+      borderRadius: 14,
+      borderWidth: 1,
+      gap: 12,
+    },
+    grupOlusturKartiIkon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
 
     // 24 Saatlik Hikayeler Çubuğu
     hikayelerKapsayici: {

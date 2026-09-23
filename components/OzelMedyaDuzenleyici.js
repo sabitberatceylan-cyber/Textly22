@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
@@ -816,18 +817,31 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
     Image.getSize(
       resimUri,
       (w, h) => {
-        setDogalBoyut({ w, h });
+        const dogalW = w > 0 ? w : 1080;
+        const dogalH = h > 0 ? h : 1920;
+        setDogalBoyut({ w: dogalW, h: dogalH });
         const maxW = EKRAN_GENISLIK - 32;
         const maxH = EKRAN_YUKSEKLIK - insets.top - insets.bottom - 180;
-        const scale = Math.min(maxW / w, maxH / h);
-        const cW = Math.round(w * scale);
-        const cH = Math.round(h * scale);
+        const scale = Math.min(maxW / dogalW, maxH / dogalH);
+        const cW = Math.max(100, Math.round(dogalW * scale));
+        const cH = Math.max(100, Math.round(dogalH * scale));
         setCanvasBoyut({ w: cW, h: cH });
         setCropBox({ x: 0, y: 0, w: cW, h: cH });
         setSeciliOran('serbest');
       },
       (e) => {
-        console.warn('Görsel boyutu alınamadı:', e);
+        console.warn('Görsel boyutu alınamadı, varsayılan boyut kullanılıyor:', e);
+        const dogalW = 1080;
+        const dogalH = 1920;
+        setDogalBoyut({ w: dogalW, h: dogalH });
+        const maxW = EKRAN_GENISLIK - 32;
+        const maxH = EKRAN_YUKSEKLIK - insets.top - insets.bottom - 180;
+        const scale = Math.min(maxW / dogalW, maxH / dogalH);
+        const cW = Math.max(100, Math.round(dogalW * scale));
+        const cH = Math.max(100, Math.round(dogalH * scale));
+        setCanvasBoyut({ w: cW, h: cH });
+        setCropBox({ x: 0, y: 0, w: cW, h: cH });
+        setSeciliOran('serbest');
       }
     );
   }, [visible, resimUri, insets]);
@@ -868,9 +882,9 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
         const b = panOrta.current.baslangic;
         const c = canvasRef.current;
         if (!b) return;
-        const yeniX = Math.min(Math.max(0, b.x + g.dx), c.w - b.w);
-        const yeniY = Math.min(Math.max(0, b.y + g.dy), c.h - b.h);
-        setCropBox((prev) => ({ ...prev, x: yeniX, y: yeniY }));
+        const yeniX = Math.min(Math.max(0, b.x + g.dx), (c.w || EKRAN_GENISLIK) - b.w);
+        const yeniY = Math.min(Math.max(0, b.y + g.dy), (c.h || EKRAN_YUKSEKLIK) - b.h);
+        setCropBox((prev) => ({ ...prev, x: Math.max(0, yeniX), y: Math.max(0, yeniY) }));
       },
     })
   ).current;
@@ -889,7 +903,7 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
         const alt = b.y + b.h;
         const yeniX = Math.min(Math.max(0, b.x + g.dx), sag - 50);
         const yeniY = Math.min(Math.max(0, b.y + g.dy), alt - 50);
-        setCropBox({ x: yeniX, y: yeniY, w: sag - yeniX, h: alt - yeniY });
+        setCropBox({ x: yeniX, y: yeniY, w: Math.max(50, sag - yeniX), h: Math.max(50, alt - yeniY) });
       },
     })
   ).current;
@@ -906,9 +920,10 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
         const c = canvasRef.current;
         if (!b) return;
         const alt = b.y + b.h;
-        const yeniW = Math.min(Math.max(50, b.w + g.dx), c.w - b.x);
+        const maxW = (c.w || EKRAN_GENISLIK) - b.x;
+        const yeniW = Math.min(Math.max(50, b.w + g.dx), maxW);
         const yeniY = Math.min(Math.max(0, b.y + g.dy), alt - 50);
-        setCropBox({ x: b.x, y: yeniY, w: yeniW, h: alt - yeniY });
+        setCropBox({ x: b.x, y: yeniY, w: yeniW, h: Math.max(50, alt - yeniY) });
       },
     })
   ).current;
@@ -922,11 +937,13 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
       },
       onPanResponderMove: (e, g) => {
         const b = panSolAlt.current.baslangic;
+        const c = canvasRef.current;
         if (!b) return;
         const sag = b.x + b.w;
+        const maxH = (c.h || EKRAN_YUKSEKLIK) - b.y;
         const yeniX = Math.min(Math.max(0, b.x + g.dx), sag - 50);
-        const yeniH = Math.min(Math.max(50, b.h + g.dy), c.h - b.y);
-        setCropBox({ x: yeniX, y: b.y, w: sag - yeniX, h: yeniH });
+        const yeniH = Math.min(Math.max(50, b.h + g.dy), maxH);
+        setCropBox({ x: yeniX, y: b.y, w: Math.max(50, sag - yeniX), h: yeniH });
       },
     })
   ).current;
@@ -942,8 +959,10 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
         const b = panSagAlt.current.baslangic;
         const c = canvasRef.current;
         if (!b) return;
-        const yeniW = Math.min(Math.max(50, b.w + g.dx), c.w - b.x);
-        const yeniH = Math.min(Math.max(50, b.h + g.dy), c.h - b.y);
+        const maxW = (c.w || EKRAN_GENISLIK) - b.x;
+        const maxH = (c.h || EKRAN_YUKSEKLIK) - b.y;
+        const yeniW = Math.min(Math.max(50, b.w + g.dx), maxW);
+        const yeniH = Math.min(Math.max(50, b.h + g.dy), maxH);
         setCropBox({ x: b.x, y: b.y, w: yeniW, h: yeniH });
       },
     })
@@ -961,7 +980,7 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
         if (!b) return;
         const alt = b.y + b.h;
         const yeniY = Math.min(Math.max(0, b.y + g.dy), alt - 50);
-        setCropBox((prev) => ({ ...prev, y: yeniY, h: alt - yeniY }));
+        setCropBox((prev) => ({ ...prev, y: yeniY, h: Math.max(50, alt - yeniY) }));
       },
     })
   ).current;
@@ -977,7 +996,8 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
         const b = panAltKenar.current.baslangic;
         const c = canvasRef.current;
         if (!b) return;
-        const yeniH = Math.min(Math.max(50, b.h + g.dy), c.h - b.y);
+        const maxH = (c.h || EKRAN_YUKSEKLIK) - b.y;
+        const yeniH = Math.min(Math.max(50, b.h + g.dy), maxH);
         setCropBox((prev) => ({ ...prev, h: yeniH }));
       },
     })
@@ -995,7 +1015,7 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
         if (!b) return;
         const sag = b.x + b.w;
         const yeniX = Math.min(Math.max(0, b.x + g.dx), sag - 50);
-        setCropBox((prev) => ({ ...prev, x: yeniX, w: sag - yeniX }));
+        setCropBox((prev) => ({ ...prev, x: yeniX, w: Math.max(50, sag - yeniX) }));
       },
     })
   ).current;
@@ -1011,30 +1031,49 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
         const b = panSagKenar.current.baslangic;
         const c = canvasRef.current;
         if (!b) return;
-        const yeniW = Math.min(Math.max(50, b.w + g.dx), c.w - b.x);
+        const maxW = (c.w || EKRAN_GENISLIK) - b.x;
+        const yeniW = Math.min(Math.max(50, b.w + g.dx), maxW);
         setCropBox((prev) => ({ ...prev, w: yeniW }));
       },
     })
   ).current;
 
   async function kirpVeUygula() {
-    if (!resimUri || cropBox.w <= 0 || cropBox.h <= 0 || canvasBoyut.w <= 0) return;
+    if (!resimUri || cropBox.w <= 0 || cropBox.h <= 0 || canvasBoyut.w <= 0 || canvasBoyut.h <= 0) return;
     setKirpiliyor(true);
     try {
-      const scale = dogalBoyut.w / canvasBoyut.w;
-      const originX = Math.max(0, Math.round(cropBox.x * scale));
-      const originY = Math.max(0, Math.round(cropBox.y * scale));
-      const width = Math.min(dogalBoyut.w - originX, Math.round(cropBox.w * scale));
-      const height = Math.min(dogalBoyut.h - originY, Math.round(cropBox.h * scale));
+      let realW = dogalBoyut.w;
+      let realH = dogalBoyut.h;
+      if (!realW || isNaN(realW) || realW <= 0) realW = canvasBoyut.w;
+      if (!realH || isNaN(realH) || realH <= 0) realH = canvasBoyut.h;
+
+      const scaleW = realW / canvasBoyut.w;
+      const scaleH = realH / canvasBoyut.h;
+
+      let originX = Math.round(cropBox.x * scaleW);
+      let originY = Math.round(cropBox.y * scaleH);
+      let width = Math.round(cropBox.w * scaleW);
+      let height = Math.round(cropBox.h * scaleH);
+
+      if (isNaN(originX) || originX < 0) originX = 0;
+      if (isNaN(originY) || originY < 0) originY = 0;
+      if (isNaN(width) || width <= 10) width = Math.max(10, realW - originX);
+      if (isNaN(height) || height <= 10) height = Math.max(10, realH - originY);
+
+      if (originX + width > realW) width = Math.max(10, realW - originX);
+      if (originY + height > realH) height = Math.max(10, realH - originY);
 
       const sonuc = await ImageManipulator.manipulateAsync(
         resimUri,
         [{ crop: { originX, originY, width, height } }],
         { compress: 0.95, format: ImageManipulator.SaveFormat.JPEG }
       );
-      onKirpildi(sonuc.uri);
+      if (sonuc && sonuc.uri) {
+        onKirpildi(sonuc.uri);
+      }
     } catch (e) {
       console.warn('[kirp] Hata:', e);
+      Alert.alert('Kırpma Yapılamadı', 'Fotoğraf kırpılırken bir hata oluştu: ' + (e.message || ''));
     } finally {
       setKirpiliyor(false);
     }

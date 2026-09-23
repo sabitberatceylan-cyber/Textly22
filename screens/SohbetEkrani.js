@@ -48,35 +48,50 @@ function kayitSuresiFormatla(saniye) {
 }
 
 function VideoOynatici({ uri, styles, insets, onKapat }) {
-  const [yerelUri, setYerelUri] = useState(null);
   const [videoYukleniyor, setVideoYukleniyor] = useState(true);
   const [hata, setHata] = useState(null);
+  const videoRef = useRef(null);
 
   useEffect(() => {
-    let aktif = true;
+    // Ses modunu video için garantiye al
     (async () => {
       try {
-        const sonuc = await videoYerelGetir(uri);
-        if (aktif && sonuc && sonuc.tamam) {
-          setYerelUri(sonuc.yerelUri);
-        }
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          shouldRouteThroughEarpiece: false,
+        });
       } catch {}
     })();
-    return () => { aktif = false; };
+
+    // Zaman aşımı koruması: 3.5 saniye sonra yükleniyor animasyonunu kapat
+    const zamanlayici = setTimeout(() => {
+      setVideoYukleniyor(false);
+    }, 3500);
+
+    return () => clearTimeout(zamanlayici);
   }, [uri]);
 
   return (
-    <View style={styles.tamEkranArkaplan}>
-      <TouchableOpacity style={[styles.tamEkranKapat, { top: insets.top + 12 }]} onPress={onKapat}>
+    <View style={[styles.tamEkranArkaplan, { width: Dimensions.get('window').width, height: Dimensions.get('window').height }]}>
+      <TouchableOpacity
+        style={[styles.tamEkranKapat, { top: insets.top + 12, zIndex: 9999 }]}
+        onPress={onKapat}
+        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+      >
         <Text style={styles.tamEkranKapatMetni}>✕</Text>
       </TouchableOpacity>
+
       <Video
-        source={{ uri: yerelUri || uri }}
-        style={styles.tamEkranVideo}
+        ref={videoRef}
+        source={{ uri }}
+        style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').height }}
         useNativeControls
         resizeMode={ResizeMode.CONTAIN}
         shouldPlay
+        isLooping={false}
         onLoadStart={() => setVideoYukleniyor(true)}
+        onLoad={() => setVideoYukleniyor(false)}
         onReadyForDisplay={() => setVideoYukleniyor(false)}
         onError={(e) => {
           console.warn('Video oynatma hatası:', e);
@@ -84,15 +99,17 @@ function VideoOynatici({ uri, styles, insets, onKapat }) {
           setHata('Video oynatılamadı.');
         }}
       />
+
       {videoYukleniyor && (
-        <View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }]} pointerEvents="none">
-          <ActivityIndicator size="large" color="#ffffff" />
-          <Text style={{ color: '#ffffff', marginTop: 14, fontSize: 14 }}>Video yükleniyor...</Text>
+        <View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)' }]} pointerEvents="none">
+          <ActivityIndicator size="large" color="#00a8ff" />
+          <Text style={{ color: '#ffffff', marginTop: 14, fontSize: 14, fontWeight: '600' }}>Video açılıyor...</Text>
         </View>
       )}
+
       {hata && (
-        <View style={{ position: 'absolute', alignSelf: 'center', bottom: 100, backgroundColor: 'rgba(0,0,0,0.7)', padding: 12, borderRadius: 8 }}>
-          <Text style={{ color: '#ff453a', fontSize: 14 }}>{hata}</Text>
+        <View style={{ position: 'absolute', alignSelf: 'center', bottom: 100, backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, zIndex: 999 }}>
+          <Text style={{ color: '#ff453a', fontSize: 14, fontWeight: '700' }}>{hata}</Text>
         </View>
       )}
     </View>
@@ -109,7 +126,7 @@ function YaziyorNoktalari({ renkler }) {
 }
 
 // ----------------------------------------------------
-// Vektörel Tekrarlayan Tema Motifleri (Hello Kitty, Spider-Man, Kuromi)
+// Vektörel Tekrarlayan & Merkez Tema Motifleri
 // ----------------------------------------------------
 
 function HelloKittyMotif() {
@@ -130,6 +147,33 @@ function HelloKittyMotif() {
         <View style={[motifStilleri.kittyFiyonkKanat, { transform: [{ rotate: '-25deg' }] }]} />
         <View style={motifStilleri.kittyFiyonkOrta} />
         <View style={[motifStilleri.kittyFiyonkKanat, { transform: [{ rotate: '25deg' }] }]} />
+      </View>
+    </View>
+  );
+}
+
+function HelloKittyV2Motif() {
+  return (
+    <View style={motifStilleri.kittyV2Kutu}>
+      <View style={[motifStilleri.kittyV2Kulak, motifStilleri.kittyV2KulakSol]} />
+      <View style={[motifStilleri.kittyV2Kulak, motifStilleri.kittyV2KulakSag]} />
+      <View style={motifStilleri.kittyV2Kafa}>
+        <View style={[motifStilleri.kittyV2Goz, { left: 10 }]} />
+        <View style={[motifStilleri.kittyV2Goz, { right: 10 }]} />
+        <View style={[motifStilleri.kittyV2Allik, { left: 5 }]} />
+        <View style={[motifStilleri.kittyV2Allik, { right: 5 }]} />
+        <View style={motifStilleri.kittyV2Burun} />
+        <View style={[motifStilleri.kittyV2Biyik, { left: 0, top: 11, transform: [{ rotate: '-8deg' }] }]} />
+        <View style={[motifStilleri.kittyV2Biyik, { left: 0, top: 15 }]} />
+        <View style={[motifStilleri.kittyV2Biyik, { left: 0, top: 19, transform: [{ rotate: '8deg' }] }]} />
+        <View style={[motifStilleri.kittyV2Biyik, { right: 0, top: 11, transform: [{ rotate: '8deg' }] }]} />
+        <View style={[motifStilleri.kittyV2Biyik, { right: 0, top: 15 }]} />
+        <View style={[motifStilleri.kittyV2Biyik, { right: 0, top: 19, transform: [{ rotate: '-8deg' }] }]} />
+      </View>
+      <View style={motifStilleri.kittyV2Fiyonk}>
+        <View style={[motifStilleri.kittyV2FiyonkKanat, { transform: [{ rotate: '-25deg' }] }]} />
+        <View style={motifStilleri.kittyV2FiyonkDugum} />
+        <View style={[motifStilleri.kittyV2FiyonkKanat, { transform: [{ rotate: '25deg' }] }]} />
       </View>
     </View>
   );
@@ -174,33 +218,201 @@ function KuromiMotif() {
   );
 }
 
-function TemaDeseni({ temaId }) {
-  if (!['hello-kitty', 'spiderman', 'kuromi'].includes(temaId)) return null;
-
-  const satirlar = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-  const sutunlar = [0, 1, 2, 3];
-
+function KuromiV2Motif() {
   return (
-    <View style={motifStilleri.desenKapsayici} pointerEvents="none">
-      {satirlar.map((r) => (
-        <View key={`r-${r}`} style={[motifStilleri.desenSatir, { marginLeft: r % 2 === 0 ? 0 : 26 }]}>
-          {sutunlar.map((c) => (
-            <View
-              key={`c-${r}-${c}`}
-              style={[
-                motifStilleri.desenHucre,
-                { transform: [{ rotate: (r + c) % 2 === 0 ? '-8deg' : '8deg' }] },
-              ]}
-            >
-              {temaId === 'hello-kitty' && <HelloKittyMotif />}
-              {temaId === 'spiderman' && <SpiderManMotif />}
-              {temaId === 'kuromi' && <KuromiMotif />}
-            </View>
-          ))}
+    <View style={motifStilleri.kuromiV2Kutu}>
+      <View style={[motifStilleri.kuromiV2Kulak, motifStilleri.kuromiV2KulakSol]}>
+        <View style={motifStilleri.kuromiV2Ponpon} />
+      </View>
+      <View style={[motifStilleri.kuromiV2Kulak, motifStilleri.kuromiV2KulakSag]}>
+        <View style={motifStilleri.kuromiV2Ponpon} />
+      </View>
+      <View style={motifStilleri.kuromiV2Kafa}>
+        <View style={motifStilleri.kuromiV2KuruKafa}>
+          <View style={[motifStilleri.kuromiV2KuruGoz, { left: 2 }]} />
+          <View style={[motifStilleri.kuromiV2KuruGoz, { right: 2 }]} />
         </View>
-      ))}
+        <View style={[motifStilleri.kuromiV2Goz, { left: 8, transform: [{ rotate: '12deg' }] }]}>
+          <View style={motifStilleri.kuromiV2GozIsik} />
+        </View>
+        <View style={[motifStilleri.kuromiV2Goz, { right: 8, transform: [{ rotate: '-12deg' }] }]}>
+          <View style={motifStilleri.kuromiV2GozIsik} />
+        </View>
+        <View style={[motifStilleri.kuromiV2Yanak, { left: 6 }]} />
+        <View style={[motifStilleri.kuromiV2Yanak, { right: 6 }]} />
+      </View>
     </View>
   );
+}
+
+// ----------------------------------------------------
+// Merkez Vektörel Sahne Motifleri
+// ----------------------------------------------------
+
+function SpiderManV2Center() {
+  return (
+    <View style={motifStilleri.merkezKapsayici} pointerEvents="none">
+      <View style={motifStilleri.orumcekAgiKutu}>
+        <View style={[motifStilleri.agHalka, { width: 240, height: 240, borderRadius: 120 }]} />
+        <View style={[motifStilleri.agHalka, { width: 175, height: 175, borderRadius: 87.5 }]} />
+        <View style={[motifStilleri.agHalka, { width: 115, height: 115, borderRadius: 57.5 }]} />
+        <View style={[motifStilleri.agHalka, { width: 60, height: 60, borderRadius: 30 }]} />
+
+        <View style={[motifStilleri.agTel, { transform: [{ rotate: '0deg' }] }]} />
+        <View style={[motifStilleri.agTel, { transform: [{ rotate: '45deg' }] }]} />
+        <View style={[motifStilleri.agTel, { transform: [{ rotate: '90deg' }] }]} />
+        <View style={[motifStilleri.agTel, { transform: [{ rotate: '135deg' }] }]} />
+      </View>
+
+      <View style={motifStilleri.asiliAgIpi} />
+
+      <View style={motifStilleri.asiliSpiderman}>
+        <View style={motifStilleri.asiliBacakSol} />
+        <View style={motifStilleri.asiliBacakSag} />
+
+        <View style={motifStilleri.asiliGovde}>
+          <View style={motifStilleri.asiliMaviKemer} />
+          <View style={motifStilleri.asiliKolSol} />
+          <View style={motifStilleri.asiliKolSag} />
+          <View style={motifStilleri.asiliOrumcekLogo} />
+        </View>
+
+        <View style={motifStilleri.asiliMaske}>
+          <View style={[motifStilleri.asiliGozDis, motifStilleri.asiliGozSol]}>
+            <View style={motifStilleri.asiliGozIc} />
+          </View>
+          <View style={[motifStilleri.asiliGozDis, motifStilleri.asiliGozSag]}>
+            <View style={motifStilleri.asiliGozIc} />
+          </View>
+          <View style={motifStilleri.asiliMaskeDikey} />
+          <View style={motifStilleri.asiliMaskeYatay} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function BatmanCenter() {
+  return (
+    <View style={motifStilleri.merkezKapsayici} pointerEvents="none">
+      <View style={motifStilleri.batmanGlow}>
+        <View style={motifStilleri.batmanElips}>
+          <View style={motifStilleri.batmanGovde}>
+            <View style={[motifStilleri.batmanKulak, { left: 24 }]} />
+            <View style={[motifStilleri.batmanKulak, { right: 24 }]} />
+            <View style={[motifStilleri.batmanKanat, motifStilleri.batmanKanatSol]} />
+            <View style={[motifStilleri.batmanKanat, motifStilleri.batmanKanatSag]} />
+            <View style={motifStilleri.batmanKuyruk} />
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function RickAndMortyCenter() {
+  return (
+    <View style={motifStilleri.merkezKapsayici} pointerEvents="none">
+      <View style={motifStilleri.portalDisHalka}>
+        <View style={motifStilleri.portalOrtaHalka}>
+          <View style={motifStilleri.portalIcHalka}>
+            <View style={motifStilleri.portalCekirdek} />
+          </View>
+        </View>
+      </View>
+      <View style={[motifStilleri.portalKivilcim, { top: -25, left: 35 }]} />
+      <View style={[motifStilleri.portalKivilcim, { bottom: -20, right: 40 }]} />
+      <View style={[motifStilleri.portalKivilcim, { top: 45, right: -20 }]} />
+    </View>
+  );
+}
+
+function SpongeBobCenter() {
+  return (
+    <View style={motifStilleri.merkezKapsayici} pointerEvents="none">
+      <View style={motifStilleri.jellyKutu}>
+        <View style={motifStilleri.jellyKubbe}>
+          <View style={motifStilleri.jellyNokta1} />
+          <View style={motifStilleri.jellyNokta2} />
+        </View>
+        <View style={motifStilleri.jellyDokunacKutu}>
+          <View style={[motifStilleri.jellyDokunac, { height: 42 }]} />
+          <View style={[motifStilleri.jellyDokunac, { height: 52 }]} />
+          <View style={[motifStilleri.jellyDokunac, { height: 46 }]} />
+          <View style={[motifStilleri.jellyDokunac, { height: 38 }]} />
+        </View>
+      </View>
+      <View style={[motifStilleri.denizBaloncuk, { width: 14, height: 14, top: 40, left: 60 }]} />
+      <View style={[motifStilleri.denizBaloncuk, { width: 22, height: 22, top: -50, right: 70 }]} />
+      <View style={[motifStilleri.denizBaloncuk, { width: 10, height: 10, bottom: -40, left: 80 }]} />
+    </View>
+  );
+}
+
+function NarutoCenter() {
+  return (
+    <View style={motifStilleri.merkezKapsayici} pointerEvents="none">
+      <View style={motifStilleri.sharinganKutu}>
+        <View style={motifStilleri.sharinganIris}>
+          <View style={motifStilleri.sharinganHalka} />
+          <View style={motifStilleri.sharinganGozbebegi} />
+          <View style={[motifStilleri.tomoeKutu, { transform: [{ rotate: '0deg' }, { translateY: -32 }] }]}>
+            <View style={motifStilleri.tomoeDaire} />
+            <View style={motifStilleri.tomoeKuyruk} />
+          </View>
+          <View style={[motifStilleri.tomoeKutu, { transform: [{ rotate: '120deg' }, { translateY: -32 }] }]}>
+            <View style={motifStilleri.tomoeDaire} />
+            <View style={motifStilleri.tomoeKuyruk} />
+          </View>
+          <View style={[motifStilleri.tomoeKutu, { transform: [{ rotate: '240deg' }, { translateY: -32 }] }]}>
+            <View style={motifStilleri.tomoeDaire} />
+            <View style={motifStilleri.tomoeKuyruk} />
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function TemaDeseni({ temaId }) {
+  if (!temaId || temaId === 'varsayilan') return null;
+
+  if (temaId === 'spiderman-v2') return <SpiderManV2Center />;
+  if (temaId === 'batman') return <BatmanCenter />;
+  if (temaId === 'rick-and-morty') return <RickAndMortyCenter />;
+  if (temaId === 'spongebob') return <SpongeBobCenter />;
+  if (temaId === 'naruto') return <NarutoCenter />;
+
+  if (['hello-kitty', 'hello-kitty-v2', 'spiderman', 'kuromi', 'kuromi-v2'].includes(temaId)) {
+    const satirlar = [0, 1, 2, 3, 4, 5, 6, 7];
+    const sutunlar = [0, 1, 2, 3];
+
+    return (
+      <View style={motifStilleri.desenKapsayici} pointerEvents="none">
+        {satirlar.map((r) => (
+          <View key={`r-${r}`} style={[motifStilleri.desenSatir, { marginLeft: r % 2 === 0 ? 0 : 26 }]}>
+            {sutunlar.map((c) => (
+              <View
+                key={`c-${r}-${c}`}
+                style={[
+                  motifStilleri.desenHucre,
+                  { transform: [{ rotate: (r + c) % 2 === 0 ? '-8deg' : '8deg' }] },
+                ]}
+              >
+                {temaId === 'hello-kitty' && <HelloKittyMotif />}
+                {temaId === 'hello-kitty-v2' && <HelloKittyV2Motif />}
+                {temaId === 'spiderman' && <SpiderManMotif />}
+                {temaId === 'kuromi' && <KuromiMotif />}
+                {temaId === 'kuromi-v2' && <KuromiV2Motif />}
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  return null;
 }
 
 export default function SohbetEkrani({
@@ -2556,5 +2768,591 @@ const motifStilleri = StyleSheet.create({
     height: 7,
     borderRadius: 3,
     backgroundColor: '#ffffff',
+  },
+
+  // ------------------------------------
+  // Merkez Sahne Kapsayıcısı (Ekran Ortası)
+  // ------------------------------------
+  merkezKapsayici: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 0,
+    opacity: 0.28,
+  },
+
+  // ------------------------------------
+  // Spider-Man V2 (Ağda Asılı)
+  // ------------------------------------
+  orumcekAgiKutu: {
+    position: 'absolute',
+    width: 250,
+    height: 250,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  agHalka: {
+    position: 'absolute',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+  },
+  agTel: {
+    position: 'absolute',
+    width: 250,
+    height: 1.2,
+    backgroundColor: 'rgba(255, 255, 255, 0.24)',
+  },
+  asiliAgIpi: {
+    position: 'absolute',
+    top: 0,
+    width: 1.5,
+    height: '52%',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+  },
+  asiliSpiderman: {
+    width: 48,
+    height: 64,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    marginTop: 35,
+  },
+  asiliBacakSol: {
+    position: 'absolute',
+    top: 0,
+    left: 8,
+    width: 8,
+    height: 16,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    backgroundColor: '#0d47a1',
+    transform: [{ rotate: '-25deg' }],
+  },
+  asiliBacakSag: {
+    position: 'absolute',
+    top: 0,
+    right: 8,
+    width: 8,
+    height: 16,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    backgroundColor: '#0d47a1',
+    transform: [{ rotate: '25deg' }],
+  },
+  asiliGovde: {
+    position: 'absolute',
+    top: 13,
+    width: 26,
+    height: 24,
+    borderRadius: 7,
+    backgroundColor: '#d32f2f',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#000000',
+  },
+  asiliMaviKemer: {
+    position: 'absolute',
+    top: 3,
+    width: 22,
+    height: 7,
+    backgroundColor: '#0d47a1',
+    borderRadius: 3,
+  },
+  asiliKolSol: {
+    position: 'absolute',
+    left: -6,
+    top: 2,
+    width: 7,
+    height: 14,
+    borderRadius: 4,
+    backgroundColor: '#d32f2f',
+    transform: [{ rotate: '-35deg' }],
+  },
+  asiliKolSag: {
+    position: 'absolute',
+    right: -6,
+    top: 2,
+    width: 7,
+    height: 14,
+    borderRadius: 4,
+    backgroundColor: '#d32f2f',
+    transform: [{ rotate: '35deg' }],
+  },
+  asiliOrumcekLogo: {
+    width: 5,
+    height: 6,
+    backgroundColor: '#000000',
+    borderRadius: 2,
+    zIndex: 4,
+  },
+  asiliMaske: {
+    position: 'absolute',
+    bottom: 2,
+    width: 30,
+    height: 32,
+    borderRadius: 15,
+    backgroundColor: '#d32f2f',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  asiliMaskeDikey: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  asiliMaskeYatay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  asiliGozDis: {
+    position: 'absolute',
+    bottom: 8,
+    width: 10,
+    height: 13,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 5,
+  },
+  asiliGozSol: {
+    left: 3,
+    borderTopRightRadius: 8,
+    borderBottomLeftRadius: 8,
+    transform: [{ rotate: '-12deg' }],
+  },
+  asiliGozSag: {
+    right: 3,
+    borderTopLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    transform: [{ rotate: '12deg' }],
+  },
+  asiliGozIc: {
+    width: 7,
+    height: 10,
+    backgroundColor: '#ffffff',
+    borderRadius: 4,
+  },
+
+  // ------------------------------------
+  // Hello Kitty V2 (Kawaii Deluxe)
+  // ------------------------------------
+  kittyV2Kutu: {
+    width: 48,
+    height: 42,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  kittyV2Kulak: {
+    position: 'absolute',
+    top: 0,
+    width: 15,
+    height: 15,
+    borderRadius: 5,
+    backgroundColor: '#ffffff',
+    borderWidth: 1.8,
+    borderColor: '#ff4081',
+  },
+  kittyV2KulakSol: {
+    left: 4,
+    transform: [{ rotate: '-25deg' }],
+  },
+  kittyV2KulakSag: {
+    right: 4,
+    transform: [{ rotate: '25deg' }],
+  },
+  kittyV2Kafa: {
+    position: 'absolute',
+    bottom: 0,
+    width: 48,
+    height: 35,
+    borderRadius: 18,
+    backgroundColor: '#ffffff',
+    borderWidth: 1.8,
+    borderColor: '#ff4081',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  kittyV2Goz: {
+    position: 'absolute',
+    top: 14,
+    width: 4.5,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#222222',
+  },
+  kittyV2Allik: {
+    position: 'absolute',
+    top: 18,
+    width: 6,
+    height: 3.5,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 64, 129, 0.45)',
+  },
+  kittyV2Burun: {
+    position: 'absolute',
+    top: 17,
+    width: 5.5,
+    height: 4,
+    borderRadius: 2.5,
+    backgroundColor: '#ffd600',
+  },
+  kittyV2Biyik: {
+    position: 'absolute',
+    width: 8,
+    height: 1.3,
+    backgroundColor: '#333333',
+    borderRadius: 1,
+  },
+  kittyV2Fiyonk: {
+    position: 'absolute',
+    top: 1,
+    left: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 6,
+  },
+  kittyV2FiyonkKanat: {
+    width: 11,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#ff1744',
+    borderWidth: 1,
+    borderColor: '#b71c1c',
+  },
+  kittyV2FiyonkDugum: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#ffffff',
+    marginHorizontal: -2.5,
+    zIndex: 7,
+    borderWidth: 1,
+    borderColor: '#ff1744',
+  },
+
+  // ------------------------------------
+  // Kuromi V2 (Gothic Deluxe)
+  // ------------------------------------
+  kuromiV2Kutu: {
+    width: 48,
+    height: 50,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  kuromiV2Kulak: {
+    position: 'absolute',
+    top: 0,
+    width: 14,
+    height: 22,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    backgroundColor: '#210833',
+    borderWidth: 1.5,
+    borderColor: '#ba68c8',
+    alignItems: 'center',
+  },
+  kuromiV2KulakSol: {
+    left: 3,
+    transform: [{ rotate: '-25deg' }],
+  },
+  kuromiV2KulakSag: {
+    right: 3,
+    transform: [{ rotate: '25deg' }],
+  },
+  kuromiV2Ponpon: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#ff4081',
+    marginTop: -3.5,
+  },
+  kuromiV2Kafa: {
+    position: 'absolute',
+    bottom: 0,
+    width: 46,
+    height: 35,
+    borderRadius: 18,
+    backgroundColor: '#210833',
+    borderWidth: 1.8,
+    borderColor: '#ba68c8',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  kuromiV2KuruKafa: {
+    position: 'absolute',
+    top: 4,
+    width: 14,
+    height: 12,
+    borderRadius: 7,
+    backgroundColor: '#ff4081',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  kuromiV2KuruGoz: {
+    position: 'absolute',
+    top: 4,
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#210833',
+  },
+  kuromiV2Goz: {
+    position: 'absolute',
+    top: 17,
+    width: 6,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ffffff',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    padding: 1,
+  },
+  kuromiV2GozIsik: {
+    width: 2.5,
+    height: 2.5,
+    borderRadius: 1.5,
+    backgroundColor: '#d500f9',
+  },
+  kuromiV2Yanak: {
+    position: 'absolute',
+    top: 23,
+    width: 5,
+    height: 2.5,
+    borderRadius: 1.5,
+    backgroundColor: 'rgba(213, 0, 249, 0.4)',
+  },
+
+  // ------------------------------------
+  // Batman (Bat-Signal)
+  // ------------------------------------
+  batmanGlow: {
+    width: 220,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 214, 0, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 214, 0, 0.4)',
+  },
+  batmanElips: {
+    width: 190,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: '#ffd600',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  batmanGovde: {
+    width: 130,
+    height: 60,
+    backgroundColor: '#0a0c10',
+    borderRadius: 20,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  batmanKulak: {
+    position: 'absolute',
+    top: -8,
+    width: 8,
+    height: 12,
+    backgroundColor: '#0a0c10',
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+  },
+  batmanKanat: {
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#ffd600',
+  },
+  batmanKanatSol: {
+    top: -18,
+    left: 8,
+  },
+  batmanKanatSag: {
+    top: -18,
+    right: 8,
+  },
+  batmanKuyruk: {
+    position: 'absolute',
+    bottom: -6,
+    width: 14,
+    height: 8,
+    backgroundColor: '#0a0c10',
+    borderBottomLeftRadius: 6,
+    borderBottomRightRadius: 6,
+  },
+
+  // ------------------------------------
+  // Rick and Morty (Portal)
+  // ------------------------------------
+  portalDisHalka: {
+    width: 230,
+    height: 230,
+    borderRadius: 115,
+    borderWidth: 6,
+    borderColor: 'rgba(0, 230, 118, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 230, 118, 0.06)',
+  },
+  portalOrtaHalka: {
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    borderWidth: 5,
+    borderColor: 'rgba(0, 255, 136, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  portalIcHalka: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 4,
+    borderColor: '#76ff03',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  portalCekirdek: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#b2ff59',
+  },
+  portalKivilcim: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#00e676',
+  },
+
+  // ------------------------------------
+  // SpongeBob (Denizanası & Baloncuklar)
+  // ------------------------------------
+  jellyKutu: {
+    alignItems: 'center',
+  },
+  jellyKubbe: {
+    width: 80,
+    height: 55,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    backgroundColor: '#ff4081',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  jellyNokta1: {
+    position: 'absolute',
+    top: 12,
+    left: 22,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  jellyNokta2: {
+    position: 'absolute',
+    top: 18,
+    right: 22,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  jellyDokunacKutu: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: -2,
+  },
+  jellyDokunac: {
+    width: 4,
+    borderRadius: 2,
+    backgroundColor: '#ff4081',
+  },
+  denizBaloncuk: {
+    position: 'absolute',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 168, 255, 0.65)',
+    backgroundColor: 'rgba(0, 168, 255, 0.15)',
+  },
+
+  // ------------------------------------
+  // Naruto (Sharingan)
+  // ------------------------------------
+  sharinganKutu: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 3,
+    borderColor: '#b71c1c',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 23, 68, 0.1)',
+  },
+  sharinganIris: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#d50000',
+    borderWidth: 3,
+    borderColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  sharinganHalka: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 1.8,
+    borderColor: '#000000',
+  },
+  sharinganGozbebegi: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#000000',
+    zIndex: 5,
+  },
+  tomoeKutu: {
+    position: 'absolute',
+    width: 14,
+    height: 18,
+    alignItems: 'center',
+    zIndex: 6,
+  },
+  tomoeDaire: {
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    backgroundColor: '#000000',
+  },
+  tomoeKuyruk: {
+    width: 3.5,
+    height: 8,
+    backgroundColor: '#000000',
+    borderBottomRightRadius: 4,
+    marginTop: -2,
+    transform: [{ rotate: '45deg' }],
   },
 });
