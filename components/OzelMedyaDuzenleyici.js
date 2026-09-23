@@ -871,20 +871,24 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
     setCropBox({ x, y, w: Math.min(yeniW, cW), h: Math.min(yeniH, cH) });
   }
 
+  const dragBaslangic = useRef({ x: 0, y: 0, w: 0, h: 0 });
+
   // 1. Orta Alan (Taşıma)
   const panOrta = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        panOrta.current.baslangic = { ...cropRef.current };
+        dragBaslangic.current = { ...cropRef.current };
       },
       onPanResponderMove: (e, g) => {
-        const b = panOrta.current.baslangic;
+        const b = dragBaslangic.current;
         const c = canvasRef.current;
         if (!b) return;
-        const yeniX = Math.min(Math.max(0, b.x + g.dx), (c.w || EKRAN_GENISLIK) - b.w);
-        const yeniY = Math.min(Math.max(0, b.y + g.dy), (c.h || EKRAN_YUKSEKLIK) - b.h);
-        setCropBox((prev) => ({ ...prev, x: Math.max(0, yeniX), y: Math.max(0, yeniY) }));
+        const maxKutuX = Math.max(0, (c.w || EKRAN_GENISLIK) - b.w);
+        const maxKutuY = Math.max(0, (c.h || EKRAN_YUKSEKLIK) - b.h);
+        const yeniX = Math.min(Math.max(0, b.x + g.dx), maxKutuX);
+        const yeniY = Math.min(Math.max(0, b.y + g.dy), maxKutuY);
+        setCropBox((prev) => ({ ...prev, x: Math.max(0, Math.round(yeniX)), y: Math.max(0, Math.round(yeniY)) }));
       },
     })
   ).current;
@@ -894,16 +898,16 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        panSolUst.current.baslangic = { ...cropRef.current };
+        dragBaslangic.current = { ...cropRef.current };
       },
       onPanResponderMove: (e, g) => {
-        const b = panSolUst.current.baslangic;
+        const b = dragBaslangic.current;
         if (!b) return;
         const sag = b.x + b.w;
         const alt = b.y + b.h;
         const yeniX = Math.min(Math.max(0, b.x + g.dx), sag - 50);
         const yeniY = Math.min(Math.max(0, b.y + g.dy), alt - 50);
-        setCropBox({ x: yeniX, y: yeniY, w: Math.max(50, sag - yeniX), h: Math.max(50, alt - yeniY) });
+        setCropBox({ x: Math.round(yeniX), y: Math.round(yeniY), w: Math.max(50, Math.round(sag - yeniX)), h: Math.max(50, Math.round(alt - yeniY)) });
       },
     })
   ).current;
@@ -913,17 +917,17 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        panSagUst.current.baslangic = { ...cropRef.current };
+        dragBaslangic.current = { ...cropRef.current };
       },
       onPanResponderMove: (e, g) => {
-        const b = panSagUst.current.baslangic;
+        const b = dragBaslangic.current;
         const c = canvasRef.current;
         if (!b) return;
         const alt = b.y + b.h;
         const maxW = (c.w || EKRAN_GENISLIK) - b.x;
         const yeniW = Math.min(Math.max(50, b.w + g.dx), maxW);
         const yeniY = Math.min(Math.max(0, b.y + g.dy), alt - 50);
-        setCropBox({ x: b.x, y: yeniY, w: yeniW, h: Math.max(50, alt - yeniY) });
+        setCropBox({ x: Math.round(b.x), y: Math.round(yeniY), w: Math.round(yeniW), h: Math.max(50, Math.round(alt - yeniY)) });
       },
     })
   ).current;
@@ -933,17 +937,17 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        panSolAlt.current.baslangic = { ...cropRef.current };
+        dragBaslangic.current = { ...cropRef.current };
       },
       onPanResponderMove: (e, g) => {
-        const b = panSolAlt.current.baslangic;
+        const b = dragBaslangic.current;
         const c = canvasRef.current;
         if (!b) return;
         const sag = b.x + b.w;
         const maxH = (c.h || EKRAN_YUKSEKLIK) - b.y;
         const yeniX = Math.min(Math.max(0, b.x + g.dx), sag - 50);
         const yeniH = Math.min(Math.max(50, b.h + g.dy), maxH);
-        setCropBox({ x: yeniX, y: b.y, w: Math.max(50, sag - yeniX), h: yeniH });
+        setCropBox({ x: Math.round(yeniX), y: Math.round(b.y), w: Math.max(50, Math.round(sag - yeniX)), h: Math.round(yeniH) });
       },
     })
   ).current;
@@ -953,17 +957,17 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        panSagAlt.current.baslangic = { ...cropRef.current };
+        dragBaslangic.current = { ...cropRef.current };
       },
       onPanResponderMove: (e, g) => {
-        const b = panSagAlt.current.baslangic;
+        const b = dragBaslangic.current;
         const c = canvasRef.current;
         if (!b) return;
         const maxW = (c.w || EKRAN_GENISLIK) - b.x;
         const maxH = (c.h || EKRAN_YUKSEKLIK) - b.y;
         const yeniW = Math.min(Math.max(50, b.w + g.dx), maxW);
         const yeniH = Math.min(Math.max(50, b.h + g.dy), maxH);
-        setCropBox({ x: b.x, y: b.y, w: yeniW, h: yeniH });
+        setCropBox({ x: Math.round(b.x), y: Math.round(b.y), w: Math.round(yeniW), h: Math.round(yeniH) });
       },
     })
   ).current;
@@ -973,14 +977,14 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        panUstKenar.current.baslangic = { ...cropRef.current };
+        dragBaslangic.current = { ...cropRef.current };
       },
       onPanResponderMove: (e, g) => {
-        const b = panUstKenar.current.baslangic;
+        const b = dragBaslangic.current;
         if (!b) return;
         const alt = b.y + b.h;
         const yeniY = Math.min(Math.max(0, b.y + g.dy), alt - 50);
-        setCropBox((prev) => ({ ...prev, y: yeniY, h: Math.max(50, alt - yeniY) }));
+        setCropBox((prev) => ({ ...prev, y: Math.round(yeniY), h: Math.max(50, Math.round(alt - yeniY)) }));
       },
     })
   ).current;
@@ -990,15 +994,15 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        panAltKenar.current.baslangic = { ...cropRef.current };
+        dragBaslangic.current = { ...cropRef.current };
       },
       onPanResponderMove: (e, g) => {
-        const b = panAltKenar.current.baslangic;
+        const b = dragBaslangic.current;
         const c = canvasRef.current;
         if (!b) return;
         const maxH = (c.h || EKRAN_YUKSEKLIK) - b.y;
         const yeniH = Math.min(Math.max(50, b.h + g.dy), maxH);
-        setCropBox((prev) => ({ ...prev, h: yeniH }));
+        setCropBox((prev) => ({ ...prev, h: Math.round(yeniH) }));
       },
     })
   ).current;
@@ -1008,14 +1012,14 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        panSolKenar.current.baslangic = { ...cropRef.current };
+        dragBaslangic.current = { ...cropRef.current };
       },
       onPanResponderMove: (e, g) => {
-        const b = panSolKenar.current.baslangic;
+        const b = dragBaslangic.current;
         if (!b) return;
         const sag = b.x + b.w;
         const yeniX = Math.min(Math.max(0, b.x + g.dx), sag - 50);
-        setCropBox((prev) => ({ ...prev, x: yeniX, w: Math.max(50, sag - yeniX) }));
+        setCropBox((prev) => ({ ...prev, x: Math.round(yeniX), w: Math.max(50, Math.round(sag - yeniX)) }));
       },
     })
   ).current;
@@ -1025,15 +1029,15 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        panSagKenar.current.baslangic = { ...cropRef.current };
+        dragBaslangic.current = { ...cropRef.current };
       },
       onPanResponderMove: (e, g) => {
-        const b = panSagKenar.current.baslangic;
+        const b = dragBaslangic.current;
         const c = canvasRef.current;
         if (!b) return;
         const maxW = (c.w || EKRAN_GENISLIK) - b.x;
         const yeniW = Math.min(Math.max(50, b.w + g.dx), maxW);
-        setCropBox((prev) => ({ ...prev, w: yeniW }));
+        setCropBox((prev) => ({ ...prev, w: Math.round(yeniW) }));
       },
     })
   ).current;

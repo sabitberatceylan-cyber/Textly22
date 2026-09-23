@@ -292,83 +292,72 @@ function SpiderManV2Center() {
   );
 }
 
-function BatmanCenter() {
+function BatmanMotif() {
   return (
-    <View style={motifStilleri.merkezKapsayici} pointerEvents="none">
-      <View style={motifStilleri.batmanGlow}>
-        <View style={motifStilleri.batmanElips}>
-          <View style={motifStilleri.batmanGovde}>
-            <View style={[motifStilleri.batmanKulak, { left: 24 }]} />
-            <View style={[motifStilleri.batmanKulak, { right: 24 }]} />
-            <View style={[motifStilleri.batmanKanat, motifStilleri.batmanKanatSol]} />
-            <View style={[motifStilleri.batmanKanat, motifStilleri.batmanKanatSag]} />
-            <View style={motifStilleri.batmanKuyruk} />
-          </View>
+    <View style={motifStilleri.batmanMotifKutu}>
+      <View style={motifStilleri.batmanMotifElips}>
+        <View style={motifStilleri.batmanMotifGovde}>
+          <View style={[motifStilleri.batmanMotifKulak, { left: 11 }]} />
+          <View style={[motifStilleri.batmanMotifKulak, { right: 11 }]} />
+          <View style={[motifStilleri.batmanMotifKanat, motifStilleri.batmanMotifKanatSol]} />
+          <View style={[motifStilleri.batmanMotifKanat, motifStilleri.batmanMotifKanatSag]} />
+          <View style={motifStilleri.batmanMotifKuyruk} />
         </View>
       </View>
     </View>
   );
 }
 
-function RickAndMortyCenter() {
+function RickAndMortyMotif() {
   return (
-    <View style={motifStilleri.merkezKapsayici} pointerEvents="none">
-      <View style={motifStilleri.portalDisHalka}>
-        <View style={motifStilleri.portalOrtaHalka}>
-          <View style={motifStilleri.portalIcHalka}>
-            <View style={motifStilleri.portalCekirdek} />
-          </View>
+    <View style={motifStilleri.portalMotifKutu}>
+      <View style={motifStilleri.portalMotifDis}>
+        <View style={motifStilleri.portalMotifOrta}>
+          <View style={motifStilleri.portalMotifIc} />
         </View>
       </View>
-      <View style={[motifStilleri.portalKivilcim, { top: -25, left: 35 }]} />
-      <View style={[motifStilleri.portalKivilcim, { bottom: -20, right: 40 }]} />
-      <View style={[motifStilleri.portalKivilcim, { top: 45, right: -20 }]} />
+      <View style={[motifStilleri.portalKivilcimMini, { top: 0, right: 3 }]} />
+      <View style={[motifStilleri.portalKivilcimMini, { bottom: 2, left: 3 }]} />
     </View>
   );
 }
 
-function SpongeBobCenter() {
+function SpongeBobMotif() {
   return (
-    <View style={motifStilleri.merkezKapsayici} pointerEvents="none">
-      <View style={motifStilleri.jellyKutu}>
-        <View style={motifStilleri.jellyKubbe}>
-          <View style={motifStilleri.jellyNokta1} />
-          <View style={motifStilleri.jellyNokta2} />
+    <View style={motifStilleri.spongeMotifKutu}>
+      <View style={motifStilleri.spongeGovde}>
+        <View style={[motifStilleri.spongeGoz, { left: 5 }]}>
+          <View style={motifStilleri.spongeGozMavi}>
+            <View style={motifStilleri.spongeGozBebek} />
+          </View>
         </View>
-        <View style={motifStilleri.jellyDokunacKutu}>
-          <View style={[motifStilleri.jellyDokunac, { height: 42 }]} />
-          <View style={[motifStilleri.jellyDokunac, { height: 52 }]} />
-          <View style={[motifStilleri.jellyDokunac, { height: 46 }]} />
-          <View style={[motifStilleri.jellyDokunac, { height: 38 }]} />
+        <View style={[motifStilleri.spongeGoz, { right: 5 }]}>
+          <View style={motifStilleri.spongeGozMavi}>
+            <View style={motifStilleri.spongeGozBebek} />
+          </View>
+        </View>
+        <View style={motifStilleri.spongeBurun} />
+        <View style={motifStilleri.spongeAgiz}>
+          <View style={[motifStilleri.spongeDis, { left: 4 }]} />
+          <View style={[motifStilleri.spongeDis, { right: 4 }]} />
         </View>
       </View>
-      <View style={[motifStilleri.denizBaloncuk, { width: 14, height: 14, top: 40, left: 60 }]} />
-      <View style={[motifStilleri.denizBaloncuk, { width: 22, height: 22, top: -50, right: 70 }]} />
-      <View style={[motifStilleri.denizBaloncuk, { width: 10, height: 10, bottom: -40, left: 80 }]} />
+      <View style={motifStilleri.spongeGomlek}>
+        <View style={motifStilleri.spongeKravat} />
+      </View>
     </View>
   );
 }
 
-function NarutoCenter() {
+function NarutoMotif() {
   return (
-    <View style={motifStilleri.merkezKapsayici} pointerEvents="none">
-      <View style={motifStilleri.sharinganKutu}>
-        <View style={motifStilleri.sharinganIris}>
-          <View style={motifStilleri.sharinganHalka} />
-          <View style={motifStilleri.sharinganGozbebegi} />
-          <View style={[motifStilleri.tomoeKutu, { transform: [{ rotate: '0deg' }, { translateY: -32 }] }]}>
-            <View style={motifStilleri.tomoeDaire} />
-            <View style={motifStilleri.tomoeKuyruk} />
-          </View>
-          <View style={[motifStilleri.tomoeKutu, { transform: [{ rotate: '120deg' }, { translateY: -32 }] }]}>
-            <View style={motifStilleri.tomoeDaire} />
-            <View style={motifStilleri.tomoeKuyruk} />
-          </View>
-          <View style={[motifStilleri.tomoeKutu, { transform: [{ rotate: '240deg' }, { translateY: -32 }] }]}>
-            <View style={motifStilleri.tomoeDaire} />
-            <View style={motifStilleri.tomoeKuyruk} />
-          </View>
-        </View>
+    <View style={motifStilleri.akatsukiKutu}>
+      <View style={motifStilleri.akatsukiDisBulut}>
+        <View style={motifStilleri.akatsukiPufSol} />
+        <View style={motifStilleri.akatsukiPufOrta} />
+        <View style={motifStilleri.akatsukiPufSag} />
+        <View style={motifStilleri.akatsukiGovde} />
+        <View style={motifStilleri.akatsukiSpiral} />
       </View>
     </View>
   );
@@ -378,12 +367,18 @@ function TemaDeseni({ temaId }) {
   if (!temaId || temaId === 'varsayilan') return null;
 
   if (temaId === 'spiderman-v2') return <SpiderManV2Center />;
-  if (temaId === 'batman') return <BatmanCenter />;
-  if (temaId === 'rick-and-morty') return <RickAndMortyCenter />;
-  if (temaId === 'spongebob') return <SpongeBobCenter />;
-  if (temaId === 'naruto') return <NarutoCenter />;
 
-  if (['hello-kitty', 'hello-kitty-v2', 'spiderman', 'kuromi', 'kuromi-v2'].includes(temaId)) {
+  if ([
+    'hello-kitty',
+    'hello-kitty-v2',
+    'spiderman',
+    'kuromi',
+    'kuromi-v2',
+    'batman',
+    'rick-and-morty',
+    'spongebob',
+    'naruto',
+  ].includes(temaId)) {
     const satirlar = [0, 1, 2, 3, 4, 5, 6, 7];
     const sutunlar = [0, 1, 2, 3];
 
@@ -396,7 +391,7 @@ function TemaDeseni({ temaId }) {
                 key={`c-${r}-${c}`}
                 style={[
                   motifStilleri.desenHucre,
-                  { transform: [{ rotate: (r + c) % 2 === 0 ? '-8deg' : '8deg' }] },
+                  { transform: [{ rotate: (r + c) % 2 === 0 ? '-7deg' : '7deg' }] },
                 ]}
               >
                 {temaId === 'hello-kitty' && <HelloKittyMotif />}
@@ -404,6 +399,10 @@ function TemaDeseni({ temaId }) {
                 {temaId === 'spiderman' && <SpiderManMotif />}
                 {temaId === 'kuromi' && <KuromiMotif />}
                 {temaId === 'kuromi-v2' && <KuromiV2Motif />}
+                {temaId === 'batman' && <BatmanMotif />}
+                {temaId === 'rick-and-morty' && <RickAndMortyMotif />}
+                {temaId === 'spongebob' && <SpongeBobMotif />}
+                {temaId === 'naruto' && <NarutoMotif />}
               </View>
             ))}
           </View>
@@ -3133,226 +3132,277 @@ const motifStilleri = StyleSheet.create({
   },
 
   // ------------------------------------
-  // Batman (Bat-Signal)
+  // Batman (Tekrarlayan Bat-Symbol)
   // ------------------------------------
-  batmanGlow: {
-    width: 220,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255, 214, 0, 0.12)',
+  batmanMotifKutu: {
+    width: 48,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 214, 0, 0.4)',
   },
-  batmanElips: {
-    width: 190,
-    height: 110,
-    borderRadius: 55,
+  batmanMotifElips: {
+    width: 46,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#ffd600',
+    borderWidth: 1.5,
+    borderColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  batmanGovde: {
-    width: 130,
-    height: 60,
+  batmanMotifGovde: {
+    width: 32,
+    height: 16,
     backgroundColor: '#0a0c10',
-    borderRadius: 20,
+    borderRadius: 6,
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  batmanKulak: {
+  batmanMotifKulak: {
     position: 'absolute',
-    top: -8,
-    width: 8,
-    height: 12,
+    top: -4,
+    width: 3,
+    height: 6,
     backgroundColor: '#0a0c10',
-    borderTopLeftRadius: 4,
-    borderTopRightRadius: 4,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
   },
-  batmanKanat: {
+  batmanMotifKanat: {
     position: 'absolute',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 13,
+    height: 13,
+    borderRadius: 6.5,
     backgroundColor: '#ffd600',
   },
-  batmanKanatSol: {
-    top: -18,
-    left: 8,
+  batmanMotifKanatSol: {
+    top: -5,
+    left: 2,
   },
-  batmanKanatSag: {
-    top: -18,
-    right: 8,
+  batmanMotifKanatSag: {
+    top: -5,
+    right: 2,
   },
-  batmanKuyruk: {
+  batmanMotifKuyruk: {
     position: 'absolute',
-    bottom: -6,
-    width: 14,
-    height: 8,
+    bottom: -3,
+    width: 6,
+    height: 4,
     backgroundColor: '#0a0c10',
-    borderBottomLeftRadius: 6,
-    borderBottomRightRadius: 6,
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
   },
 
   // ------------------------------------
-  // Rick and Morty (Portal)
+  // Rick and Morty (Tekrarlayan Portal)
   // ------------------------------------
-  portalDisHalka: {
-    width: 230,
-    height: 230,
-    borderRadius: 115,
-    borderWidth: 6,
-    borderColor: 'rgba(0, 230, 118, 0.4)',
+  portalMotifKutu: {
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 230, 118, 0.06)',
+    position: 'relative',
   },
-  portalOrtaHalka: {
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    borderWidth: 5,
-    borderColor: 'rgba(0, 255, 136, 0.7)',
+  portalMotifDis: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2.5,
+    borderColor: 'rgba(0, 230, 118, 0.7)',
+    backgroundColor: 'rgba(0, 230, 118, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  portalIcHalka: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 4,
+  portalMotifOrta: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
     borderColor: '#76ff03',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  portalCekirdek: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  portalMotifIc: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#b2ff59',
   },
-  portalKivilcim: {
+  portalKivilcimMini: {
     position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: '#00e676',
   },
 
   // ------------------------------------
-  // SpongeBob (Denizanası & Baloncuklar)
+  // SpongeBob (Tekrarlayan SüngerBob Yüzü)
   // ------------------------------------
-  jellyKutu: {
+  spongeMotifKutu: {
+    width: 40,
+    height: 46,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  jellyKubbe: {
-    width: 80,
-    height: 55,
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    backgroundColor: '#ff4081',
-    borderWidth: 2,
-    borderColor: '#ffffff',
+  spongeGovde: {
+    width: 36,
+    height: 32,
+    backgroundColor: '#ffeb3b',
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: '#f57f17',
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  spongeGoz: {
+    position: 'absolute',
+    top: 4,
+    width: 13,
+    height: 13,
+    borderRadius: 6.5,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  spongeGozMavi: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#00b0ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  spongeGozBebek: {
+    width: 3.5,
+    height: 3.5,
+    borderRadius: 2,
+    backgroundColor: '#000000',
+  },
+  spongeBurun: {
+    position: 'absolute',
+    top: 13,
+    width: 4,
+    height: 6,
+    borderRadius: 2,
+    backgroundColor: '#fbc02d',
+    borderWidth: 0.8,
+    borderColor: '#f57f17',
+  },
+  spongeAgiz: {
+    position: 'absolute',
+    bottom: 3,
+    width: 18,
+    height: 8,
+    borderBottomLeftRadius: 9,
+    borderBottomRightRadius: 9,
+    borderWidth: 1,
+    borderColor: '#b71c1c',
+    backgroundColor: '#d32f2f',
+    overflow: 'hidden',
+  },
+  spongeDis: {
+    position: 'absolute',
+    top: 0,
+    width: 4,
+    height: 4,
+    backgroundColor: '#ffffff',
+    borderWidth: 0.5,
+    borderColor: '#b71c1c',
+  },
+  spongeGomlek: {
+    width: 36,
+    height: 9,
+    backgroundColor: '#ffffff',
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+    borderWidth: 1,
+    borderColor: '#5d4037',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
-  jellyNokta1: {
-    position: 'absolute',
-    top: 12,
-    left: 22,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.35)',
-  },
-  jellyNokta2: {
-    position: 'absolute',
-    top: 18,
-    right: 22,
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.35)',
-  },
-  jellyDokunacKutu: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: -2,
-  },
-  jellyDokunac: {
-    width: 4,
-    borderRadius: 2,
-    backgroundColor: '#ff4081',
-  },
-  denizBaloncuk: {
-    position: 'absolute',
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0, 168, 255, 0.65)',
-    backgroundColor: 'rgba(0, 168, 255, 0.15)',
+  spongeKravat: {
+    width: 6,
+    height: 8,
+    backgroundColor: '#d50000',
+    borderRadius: 1,
+    transform: [{ rotate: '45deg' }],
   },
 
   // ------------------------------------
-  // Naruto (Sharingan)
+  // Naruto (Tekrarlayan Akatsuki Bulutu)
   // ------------------------------------
-  sharinganKutu: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    borderWidth: 3,
-    borderColor: '#b71c1c',
+  akatsukiKutu: {
+    width: 48,
+    height: 34,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 23, 68, 0.1)',
   },
-  sharinganIris: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: '#d50000',
-    borderWidth: 3,
-    borderColor: '#000000',
-    justifyContent: 'center',
-    alignItems: 'center',
+  akatsukiDisBulut: {
+    width: 44,
+    height: 28,
     position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  sharinganHalka: {
+  akatsukiPufSol: {
     position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 1.8,
-    borderColor: '#000000',
+    left: 2,
+    top: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#d50000',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
   },
-  sharinganGozbebegi: {
+  akatsukiPufOrta: {
+    position: 'absolute',
+    left: 12,
+    top: 0,
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#000000',
-    zIndex: 5,
+    backgroundColor: '#d50000',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+    zIndex: 2,
   },
-  tomoeKutu: {
+  akatsukiPufSag: {
     position: 'absolute',
-    width: 14,
-    height: 18,
-    alignItems: 'center',
-    zIndex: 6,
+    right: 2,
+    top: 7,
+    width: 17,
+    height: 17,
+    borderRadius: 8.5,
+    backgroundColor: '#d50000',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
   },
-  tomoeDaire: {
-    width: 11,
-    height: 11,
-    borderRadius: 5.5,
-    backgroundColor: '#000000',
+  akatsukiGovde: {
+    position: 'absolute',
+    bottom: 2,
+    width: 36,
+    height: 14,
+    backgroundColor: '#d50000',
+    borderRadius: 7,
+    zIndex: 3,
   },
-  tomoeKuyruk: {
-    width: 3.5,
-    height: 8,
-    backgroundColor: '#000000',
-    borderBottomRightRadius: 4,
-    marginTop: -2,
+  akatsukiSpiral: {
+    position: 'absolute',
+    top: 8,
+    left: 17,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.2,
+    borderColor: '#ffffff',
+    borderTopColor: 'transparent',
+    zIndex: 4,
     transform: [{ rotate: '45deg' }],
   },
 });

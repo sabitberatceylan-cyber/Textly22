@@ -823,8 +823,8 @@ export default function AnaSayfaEkrani({
     return (gruplar || [])
       .filter((g) => g && g.id && !(gizlenenSohbetler || []).includes(grupAnahtari(g.id)))
       .sort((a, b) => {
-        const tA = sonMesajZamanlari[grupAnahtari(a.id)] || a?.sonMesajZamani || 0;
-        const tB = sonMesajZamanlari[grupAnahtari(b.id)] || b?.sonMesajZamani || 0;
+        const tA = sonMesajZamanlari[grupAnahtari(a.id)] || a?.sonMesajZamani || a?.olusturuldu || 0;
+        const tB = sonMesajZamanlari[grupAnahtari(b.id)] || b?.sonMesajZamani || b?.olusturuldu || 0;
         return tB - tA;
       });
   }, [gruplar, sonMesajZamanlari, gizlenenSohbetler]);
@@ -852,9 +852,13 @@ export default function AnaSayfaEkrani({
     return birlesik.sort((a, b) => {
       const keyA = a._sohbetTuru === 'grup' ? grupAnahtari(a.id) : kisiAnahtari(a.kullanici);
       const keyB = b._sohbetTuru === 'grup' ? grupAnahtari(b.id) : kisiAnahtari(b.kullanici);
-      const tA = sonMesajZamanlari[keyA] || a.sonMesajZamani || 0;
-      const tB = sonMesajZamanlari[keyB] || b.sonMesajZamani || 0;
-      return tB - tA;
+      const tA = sonMesajZamanlari[keyA] || a.sonMesajZamani || a.olusturuldu || 0;
+      const tB = sonMesajZamanlari[keyB] || b.sonMesajZamani || b.olusturuldu || 0;
+      if (tB !== tA) return tB - tA;
+      // Mesaj yoksa gruplar en üstte görünsün
+      if (a._sohbetTuru === 'grup' && b._sohbetTuru !== 'grup') return -1;
+      if (b._sohbetTuru === 'grup' && a._sohbetTuru !== 'grup') return 1;
+      return 0;
     });
   }, [filtrelenmisGruplar, filtrelenmisKisiler, sonMesajZamanlari]);
 
@@ -1291,7 +1295,7 @@ export default function AnaSayfaEkrani({
               <>
                 <TouchableOpacity
                   style={[styles.grupOlusturKarti, { borderColor: renkler.cizgi, backgroundColor: renkler.yuzey }]}
-                  onPress={() => setGrupOlusturAcik(true)}
+                  onPress={() => setGrupModalAcik(true)}
                   activeOpacity={0.8}
                 >
                   <View style={[styles.grupOlusturKartiIkon, { backgroundColor: (renkler.vurgu || '#00a8ff') + '22' }]}>
@@ -1996,6 +2000,23 @@ export default function AnaSayfaEkrani({
                   setGrupModalAcik(false);
                   setGrupIsim('');
                   setSeciliUyeler([]);
+                  const simdi = Date.now();
+                  const yeniGrupObj = {
+                    id: String(res.id),
+                    isim: res.isim || isim,
+                    uyeler: res.uyeler || [kullanici, ...seciliUyeler],
+                    yonetici: res.yonetici || kullanici,
+                    yoneticiler: res.yoneticiler || [kullanici],
+                    olusturan: kullanici,
+                    olusturuldu: simdi,
+                    sonMesajZamani: simdi,
+                    sonMesaj: null,
+                    okunmamisSayisi: 0,
+                  };
+                  setGruplar((eski) => [yeniGrupObj, ...eski.filter((g) => String(g.id) !== String(res.id))]);
+                  if (sonZamanlariGuncelle) {
+                    sonZamanlariGuncelle({ [grupAnahtari(res.id)]: simdi });
+                  }
                   veriyiYukle();
                 } else {
                   Alert.alert('Hata', res.hata || 'Grup oluşturulamadı.');
