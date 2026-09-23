@@ -12,8 +12,9 @@ import { TemaSaglayici, useTema } from './lib/temaBaglami';
 import { ayarlariYukle, ayarlariKaydet, ayarlariTemizle } from './lib/depolama';
 import { bildirimlerICinKurulumYap, tumBildirimleriTemizle } from './lib/bildirim';
 import * as Notifications from 'expo-notifications';
+import appConfig from './app.json';
 
-const MEVCUT_VERSIYON_KODU = 505;
+const MEVCUT_VERSIYON_KODU = Number(appConfig?.expo?.android?.versionCode) || 507;
 const SABIT_SUNUCU_URL = 'https://exzehub.com.tr';
 
 function SoketGuncellemeDinleyici({ onYeniGuncelleme }) {
