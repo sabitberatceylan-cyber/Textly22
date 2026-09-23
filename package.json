@@ -1,6 +1,6 @@
 {
   "name": "textly",
-  "version": "5.0.4",
+  "version": "5.0.5",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
@@ -16,6 +16,7 @@
     "expo-clipboard": "~6.0.3",
     "expo-device": "~6.0.2",
     "expo-file-system": "~17.0.1",
+    "expo-image-manipulator": "~12.0.5",
     "expo-image-picker": "~15.0.7",
     "expo-intent-launcher": "~11.0.1",
     "expo-notifications": "~0.28.19",

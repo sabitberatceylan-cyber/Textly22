@@ -43,7 +43,7 @@ if %errorlevel% equ 0 (
 echo.
 echo Dosyalar hazirlaniyor...
 git add .
-git commit -m "Textly v5.0.4 guncellemesi" || true
+git commit -m "Textly v5.0.5 guncellemesi" || true
 
 echo.
 echo GitHub'a yukleniyor (Push ediliyor)...

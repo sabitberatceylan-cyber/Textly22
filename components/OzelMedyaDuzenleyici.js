@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { bosluk } from '../theme';
 
@@ -48,9 +49,10 @@ export default function OzelMedyaDuzenleyici({
 }) {
   const insets = useSafeAreaInsets();
 
-  // Aktif Medya ve Sığdır Modu
+  // Aktif Medya, Sığdır Modu ve Uygulama İçi Kırpıcı
   const [aktifMedya, setAktifMedya] = useState(medya);
   const [sigdir, setSigdir] = useState(false);
+  const [kirpmaModalAcik, setKirpmaModalAcik] = useState(false);
 
   useEffect(() => {
     setAktifMedya(medya);
@@ -108,24 +110,22 @@ export default function OzelMedyaDuzenleyici({
     setYaziDuzenlemeAcik(false);
   }
 
-  async function kirpmaBaslat() {
-    try {
-      const sonuc = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.95,
-      });
-      if (!sonuc.canceled && sonuc.assets && sonuc.assets[0]) {
-        setAktifMedya((prev) => ({
-          ...prev,
-          uri: sonuc.assets[0].uri,
-          mimeTuru: sonuc.assets[0].mimeType || 'image/jpeg',
-          tur: 'foto',
-        }));
-      }
-    } catch (e) {
-      console.warn('Kırpma açılamadı:', e.message);
+  function kirpmaBaslat() {
+    if (aktifMedya?.tur !== 'video' && aktifMedya?.uri) {
+      setKirpmaModalAcik(true);
     }
+  }
+
+  function kirpmaTamamlandi(yeniUri) {
+    if (yeniUri) {
+      setAktifMedya((prev) => ({
+        ...prev,
+        uri: yeniUri,
+        tur: 'foto',
+        mimeTuru: 'image/jpeg',
+      }));
+    }
+    setKirpmaModalAcik(false);
   }
 
   function gonder() {
@@ -380,6 +380,14 @@ export default function OzelMedyaDuzenleyici({
             </TouchableOpacity>
           </View>
         )}
+
+        {/* 4 Yandan Etkileşimli Kırpıcı Modalı */}
+        <GorselKirpici
+          visible={kirpmaModalAcik}
+          resimUri={aktifMedya?.tur !== 'video' ? aktifMedya?.uri : null}
+          onKapat={() => setKirpmaModalAcik(false)}
+          onKirpildi={kirpmaTamamlandi}
+        />
       </View>
     </Modal>
   );
@@ -615,4 +623,516 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginLeft: 2,
   },
+
+  // 4 Yandan Kırpıcı Stilleri
+  kirpmaKok: {
+    flex: 1,
+    backgroundColor: '#0a0d12',
+  },
+  kirpmaUstBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  kirpmaIptalMetin: {
+    color: '#ff5252',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  kirpmaBaslikMetin: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  kirpmaUygulaMetin: {
+    color: '#00a8ff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  kirpmaGovde: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+  },
+  kirpmaCanvas: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  kirpmaMaske: {
+    position: 'absolute',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+  },
+  kirpmaKutusu: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  kirpmaIzgaraYatay1: {
+    position: 'absolute',
+    top: '33.33%',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  kirpmaIzgaraYatay2: {
+    position: 'absolute',
+    top: '66.66%',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  kirpmaIzgaraDikey1: {
+    position: 'absolute',
+    left: '33.33%',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  kirpmaIzgaraDikey2: {
+    position: 'absolute',
+    left: '66.66%',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  tutamacKose: {
+    position: 'absolute',
+    width: 32,
+    height: 32,
+    borderColor: '#00a8ff',
+  },
+  tutamacSolUst: {
+    top: -2,
+    left: -2,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+  },
+  tutamacSagUst: {
+    top: -2,
+    right: -2,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+  },
+  tutamacSolAlt: {
+    bottom: -2,
+    left: -2,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+  },
+  tutamacSagAlt: {
+    bottom: -2,
+    right: -2,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+  },
+  tutamacKenarUst: {
+    position: 'absolute',
+    top: -12,
+    left: 32,
+    right: 32,
+    height: 24,
+  },
+  tutamacKenarAlt: {
+    position: 'absolute',
+    bottom: -12,
+    left: 32,
+    right: 32,
+    height: 24,
+  },
+  tutamacKenarSol: {
+    position: 'absolute',
+    left: -12,
+    top: 32,
+    bottom: 32,
+    width: 24,
+  },
+  tutamacKenarSag: {
+    position: 'absolute',
+    right: -12,
+    top: 32,
+    bottom: 32,
+    width: 24,
+  },
+  kirpmaAltBar: {
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#0d1117',
+  },
+  oranlarSatiri: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  oranButon: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  oranButonAktif: {
+    backgroundColor: '#00a8ff',
+  },
+  oranMetin: {
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  oranMetinAktif: {
+    color: '#ffffff',
+    fontWeight: '800',
+  },
 });
+
+// -------------------------------------------------------------------
+// 4 YANDAN VE KÖŞELERDEN KONTROLLÜ UYGULAMA İÇİ GÖRSEL KIRPICI
+// -------------------------------------------------------------------
+function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
+  const insets = useSafeAreaInsets();
+  const [dogalBoyut, setDogalBoyut] = useState({ w: 0, h: 0 });
+  const [canvasBoyut, setCanvasBoyut] = useState({ w: 0, h: 0 });
+  const [cropBox, setCropBox] = useState({ x: 0, y: 0, w: 0, h: 0 });
+  const [seciliOran, setSeciliOran] = useState('serbest');
+  const [kirpiliyor, setKirpiliyor] = useState(false);
+
+  const cropRef = useRef({ x: 0, y: 0, w: 0, h: 0 });
+  cropRef.current = cropBox;
+  const canvasRef = useRef({ w: 0, h: 0 });
+  canvasRef.current = canvasBoyut;
+
+  // Görsel boyutunu al ve canvası hesapla
+  useEffect(() => {
+    if (!visible || !resimUri) return;
+    Image.getSize(
+      resimUri,
+      (w, h) => {
+        setDogalBoyut({ w, h });
+        const maxW = EKRAN_GENISLIK - 32;
+        const maxH = EKRAN_YUKSEKLIK - insets.top - insets.bottom - 180;
+        const scale = Math.min(maxW / w, maxH / h);
+        const cW = Math.round(w * scale);
+        const cH = Math.round(h * scale);
+        setCanvasBoyut({ w: cW, h: cH });
+        setCropBox({ x: 0, y: 0, w: cW, h: cH });
+        setSeciliOran('serbest');
+      },
+      (e) => {
+        console.warn('Görsel boyutu alınamadı:', e);
+      }
+    );
+  }, [visible, resimUri, insets]);
+
+  function oranaAyarla(oranKey) {
+    setSeciliOran(oranKey);
+    const { w: cW, h: cH } = canvasBoyut;
+    if (cW <= 0 || cH <= 0) return;
+    if (oranKey === 'serbest') {
+      setCropBox({ x: 0, y: 0, w: cW, h: cH });
+      return;
+    }
+    let hedefOran = 1;
+    if (oranKey === '1:1') hedefOran = 1;
+    else if (oranKey === '4:5') hedefOran = 4 / 5;
+    else if (oranKey === '9:16') hedefOran = 9 / 16;
+    else if (oranKey === '16:9') hedefOran = 16 / 9;
+
+    let yeniW = cW;
+    let yeniH = Math.round(cW / hedefOran);
+    if (yeniH > cH) {
+      yeniH = cH;
+      yeniW = Math.round(cH * hedefOran);
+    }
+    const x = Math.max(0, Math.round((cW - yeniW) / 2));
+    const y = Math.max(0, Math.round((cH - yeniH) / 2));
+    setCropBox({ x, y, w: Math.min(yeniW, cW), h: Math.min(yeniH, cH) });
+  }
+
+  // 1. Orta Alan (Taşıma)
+  const panOrta = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        panOrta.current.baslangic = { ...cropRef.current };
+      },
+      onPanResponderMove: (e, g) => {
+        const b = panOrta.current.baslangic;
+        const c = canvasRef.current;
+        if (!b) return;
+        const yeniX = Math.min(Math.max(0, b.x + g.dx), c.w - b.w);
+        const yeniY = Math.min(Math.max(0, b.y + g.dy), c.h - b.h);
+        setCropBox((prev) => ({ ...prev, x: yeniX, y: yeniY }));
+      },
+    })
+  ).current;
+
+  // 2. Sol-Üst Köşe
+  const panSolUst = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        panSolUst.current.baslangic = { ...cropRef.current };
+      },
+      onPanResponderMove: (e, g) => {
+        const b = panSolUst.current.baslangic;
+        if (!b) return;
+        const sag = b.x + b.w;
+        const alt = b.y + b.h;
+        const yeniX = Math.min(Math.max(0, b.x + g.dx), sag - 50);
+        const yeniY = Math.min(Math.max(0, b.y + g.dy), alt - 50);
+        setCropBox({ x: yeniX, y: yeniY, w: sag - yeniX, h: alt - yeniY });
+      },
+    })
+  ).current;
+
+  // 3. Sağ-Üst Köşe
+  const panSagUst = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        panSagUst.current.baslangic = { ...cropRef.current };
+      },
+      onPanResponderMove: (e, g) => {
+        const b = panSagUst.current.baslangic;
+        const c = canvasRef.current;
+        if (!b) return;
+        const alt = b.y + b.h;
+        const yeniW = Math.min(Math.max(50, b.w + g.dx), c.w - b.x);
+        const yeniY = Math.min(Math.max(0, b.y + g.dy), alt - 50);
+        setCropBox({ x: b.x, y: yeniY, w: yeniW, h: alt - yeniY });
+      },
+    })
+  ).current;
+
+  // 4. Sol-Alt Köşe
+  const panSolAlt = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        panSolAlt.current.baslangic = { ...cropRef.current };
+      },
+      onPanResponderMove: (e, g) => {
+        const b = panSolAlt.current.baslangic;
+        if (!b) return;
+        const sag = b.x + b.w;
+        const yeniX = Math.min(Math.max(0, b.x + g.dx), sag - 50);
+        const yeniH = Math.min(Math.max(50, b.h + g.dy), c.h - b.y);
+        setCropBox({ x: yeniX, y: b.y, w: sag - yeniX, h: yeniH });
+      },
+    })
+  ).current;
+
+  // 5. Sağ-Alt Köşe
+  const panSagAlt = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        panSagAlt.current.baslangic = { ...cropRef.current };
+      },
+      onPanResponderMove: (e, g) => {
+        const b = panSagAlt.current.baslangic;
+        const c = canvasRef.current;
+        if (!b) return;
+        const yeniW = Math.min(Math.max(50, b.w + g.dx), c.w - b.x);
+        const yeniH = Math.min(Math.max(50, b.h + g.dy), c.h - b.y);
+        setCropBox({ x: b.x, y: b.y, w: yeniW, h: yeniH });
+      },
+    })
+  ).current;
+
+  // 6. Üst Kenar
+  const panUstKenar = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        panUstKenar.current.baslangic = { ...cropRef.current };
+      },
+      onPanResponderMove: (e, g) => {
+        const b = panUstKenar.current.baslangic;
+        if (!b) return;
+        const alt = b.y + b.h;
+        const yeniY = Math.min(Math.max(0, b.y + g.dy), alt - 50);
+        setCropBox((prev) => ({ ...prev, y: yeniY, h: alt - yeniY }));
+      },
+    })
+  ).current;
+
+  // 7. Alt Kenar
+  const panAltKenar = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        panAltKenar.current.baslangic = { ...cropRef.current };
+      },
+      onPanResponderMove: (e, g) => {
+        const b = panAltKenar.current.baslangic;
+        const c = canvasRef.current;
+        if (!b) return;
+        const yeniH = Math.min(Math.max(50, b.h + g.dy), c.h - b.y);
+        setCropBox((prev) => ({ ...prev, h: yeniH }));
+      },
+    })
+  ).current;
+
+  // 8. Sol Kenar
+  const panSolKenar = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        panSolKenar.current.baslangic = { ...cropRef.current };
+      },
+      onPanResponderMove: (e, g) => {
+        const b = panSolKenar.current.baslangic;
+        if (!b) return;
+        const sag = b.x + b.w;
+        const yeniX = Math.min(Math.max(0, b.x + g.dx), sag - 50);
+        setCropBox((prev) => ({ ...prev, x: yeniX, w: sag - yeniX }));
+      },
+    })
+  ).current;
+
+  // 9. Sağ Kenar
+  const panSagKenar = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        panSagKenar.current.baslangic = { ...cropRef.current };
+      },
+      onPanResponderMove: (e, g) => {
+        const b = panSagKenar.current.baslangic;
+        const c = canvasRef.current;
+        if (!b) return;
+        const yeniW = Math.min(Math.max(50, b.w + g.dx), c.w - b.x);
+        setCropBox((prev) => ({ ...prev, w: yeniW }));
+      },
+    })
+  ).current;
+
+  async function kirpVeUygula() {
+    if (!resimUri || cropBox.w <= 0 || cropBox.h <= 0 || canvasBoyut.w <= 0) return;
+    setKirpiliyor(true);
+    try {
+      const scale = dogalBoyut.w / canvasBoyut.w;
+      const originX = Math.max(0, Math.round(cropBox.x * scale));
+      const originY = Math.max(0, Math.round(cropBox.y * scale));
+      const width = Math.min(dogalBoyut.w - originX, Math.round(cropBox.w * scale));
+      const height = Math.min(dogalBoyut.h - originY, Math.round(cropBox.h * scale));
+
+      const sonuc = await ImageManipulator.manipulateAsync(
+        resimUri,
+        [{ crop: { originX, originY, width, height } }],
+        { compress: 0.95, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      onKirpildi(sonuc.uri);
+    } catch (e) {
+      console.warn('[kirp] Hata:', e);
+    } finally {
+      setKirpiliyor(false);
+    }
+  }
+
+  if (!visible) return null;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onKapat}>
+      <View style={[styles.kirpmaKok, { paddingTop: insets.top }]}>
+        <StatusBar barStyle="light-content" backgroundColor="#0a0d12" />
+
+        {/* Üst Çubuk */}
+        <View style={styles.kirpmaUstBar}>
+          <TouchableOpacity onPress={onKapat} disabled={kirpiliyor} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={styles.kirpmaIptalMetin}>Vazgeç</Text>
+          </TouchableOpacity>
+          <Text style={styles.kirpmaBaslikMetin}>Fotoğrafı Kırp</Text>
+          <TouchableOpacity onPress={kirpVeUygula} disabled={kirpiliyor} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            {kirpiliyor ? (
+              <ActivityIndicator color="#00a8ff" size="small" />
+            ) : (
+              <Text style={styles.kirpmaUygulaMetin}>Kırp</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Görsel ve Kırpma Alanı */}
+        <View style={styles.kirpmaGovde}>
+          {canvasBoyut.w > 0 && canvasBoyut.h > 0 && (
+            <View style={[styles.kirpmaCanvas, { width: canvasBoyut.w, height: canvasBoyut.h }]}>
+              <Image source={{ uri: resimUri }} style={{ width: canvasBoyut.w, height: canvasBoyut.h }} resizeMode="contain" />
+
+              {/* 4 Taraflı Karartma Maskeleri */}
+              <View style={[styles.kirpmaMaske, { top: 0, left: 0, right: 0, height: cropBox.y }]} />
+              <View style={[styles.kirpmaMaske, { top: cropBox.y + cropBox.h, left: 0, right: 0, bottom: 0 }]} />
+              <View style={[styles.kirpmaMaske, { top: cropBox.y, left: 0, width: cropBox.x, height: cropBox.h }]} />
+              <View style={[styles.kirpmaMaske, { top: cropBox.y, left: cropBox.x + cropBox.w, right: 0, height: cropBox.h }]} />
+
+              {/* Kırpma Dikdörtgeni */}
+              <View
+                style={[
+                  styles.kirpmaKutusu,
+                  {
+                    left: cropBox.x,
+                    top: cropBox.y,
+                    width: cropBox.w,
+                    height: cropBox.h,
+                  },
+                ]}
+              >
+                {/* Izgara Çizgileri */}
+                <View style={styles.kirpmaIzgaraYatay1} pointerEvents="none" />
+                <View style={styles.kirpmaIzgaraYatay2} pointerEvents="none" />
+                <View style={styles.kirpmaIzgaraDikey1} pointerEvents="none" />
+                <View style={styles.kirpmaIzgaraDikey2} pointerEvents="none" />
+
+                {/* Orta Taşıma Alanı */}
+                <View {...panOrta.panHandlers} style={StyleSheet.absoluteFillObject} />
+
+                {/* 4 Kenar Tutamacı */}
+                <View {...panUstKenar.panHandlers} style={styles.tutamacKenarUst} />
+                <View {...panAltKenar.panHandlers} style={styles.tutamacKenarAlt} />
+                <View {...panSolKenar.panHandlers} style={styles.tutamacKenarSol} />
+                <View {...panSagKenar.panHandlers} style={styles.tutamacKenarSag} />
+
+                {/* 4 Köşe Tutamacı */}
+                <View {...panSolUst.panHandlers} style={[styles.tutamacKose, styles.tutamacSolUst]} />
+                <View {...panSagUst.panHandlers} style={[styles.tutamacKose, styles.tutamacSagUst]} />
+                <View {...panSolAlt.panHandlers} style={[styles.tutamacKose, styles.tutamacSolAlt]} />
+                <View {...panSagAlt.panHandlers} style={[styles.tutamacKose, styles.tutamacSagAlt]} />
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Oran Seçici Alt Bar */}
+        <View style={[styles.kirpmaAltBar, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+          <View style={styles.oranlarSatiri}>
+            {[
+              { id: 'serbest', etiket: 'Serbest' },
+              { id: '1:1', etiket: '1:1' },
+              { id: '4:5', etiket: '4:5' },
+              { id: '9:16', etiket: '9:16' },
+              { id: '16:9', etiket: '16:9' },
+            ].map((o) => (
+              <TouchableOpacity
+                key={o.id}
+                style={[styles.oranButon, seciliOran === o.id && styles.oranButonAktif]}
+                onPress={() => oranaAyarla(o.id)}
+              >
+                <Text style={[styles.oranMetin, seciliOran === o.id && styles.oranMetinAktif]}>{o.etiket}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+

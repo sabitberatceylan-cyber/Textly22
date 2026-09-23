@@ -66,9 +66,15 @@ jobs:
 
       - name: Release Keystore ve Imza Ayarlari
         run: |
-          # Keystore dosyasini olustur
-          keytool -genkeypair -v -keystore android/app/release.keystore -alias textlykey -keyalg RSA -keysize 2048 -validity 10000 -storepass textly123 -keypass textly123 -dname "CN=Textly,O=Textly,C=TR" || true
-          keytool -genkeypair -v -keystore android/app/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US" || true
+          # Kalici keystore dosyasini kopyala (Her derlemede ayni imza)
+          if [ -f "keystores/release.keystore" ]; then
+            cp keystores/release.keystore android/app/release.keystore
+            cp keystores/release.keystore android/app/debug.keystore
+            echo "Kalici keystore basariyla kopyalandi."
+          else
+            keytool -genkeypair -v -keystore android/app/release.keystore -alias textlykey -keyalg RSA -keysize 2048 -validity 10000 -storepass textly123 -keypass textly123 -dname "CN=Textly,O=Textly,C=TR" || true
+            keytool -genkeypair -v -keystore android/app/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US" || true
+          fi
           
           # Gradle properties ayarla
           echo "MYAPP_UPLOAD_STORE_FILE=release.keystore" >> android/gradle.properties

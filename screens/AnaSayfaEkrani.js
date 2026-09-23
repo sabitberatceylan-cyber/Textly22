@@ -248,6 +248,8 @@ export default function AnaSayfaEkrani({
     kullaniciDurumlari,
     grupGuncellemeSayaci,
     sonMesajZamanlari,
+    sonMesajlar,
+    mesajDeposu,
     yaziyorlar,
     mesajGonder,
     gizlenenSohbetler,
@@ -343,45 +345,51 @@ export default function AnaSayfaEkrani({
 
   // Sohbetleri ve kullanıcıları yükle
   const veriyiYukle = useCallback(async () => {
-    const [kSonuc, gSonuc] = await Promise.all([
-      kullanicilariGetir(sunucuAdres, kullanici, sifre),
-      gruplariGetir(sunucuAdres, kullanici, sifre),
-    ]);
-    const harita = {};
-    const okunmamisHarita = {};
-    if (kSonuc.tamam) {
-      setKullanicilar(kSonuc.liste || []);
-      const yeniDurumlar = {};
-      (kSonuc.liste || []).forEach((k) => {
-        yeniDurumlar[k.kullanici] = {
-          cevrimici: !!k.cevrimici,
-          sonGorulme: k.sonGorulme || null,
-        };
-        if (k.sonMesajZamani) {
-          harita[kisiAnahtari(k.kullanici)] = k.sonMesajZamani;
-        }
-        if (typeof k.okunmamisSayisi === 'number') {
-          okunmamisHarita[kisiAnahtari(k.kullanici)] = k.okunmamisSayisi;
-        }
-      });
-      setKullaniciDurumlari((eski) => ({ ...eski, ...yeniDurumlar }));
-    }
-    if (gSonuc.tamam) {
-      setGruplar(gSonuc.liste || []);
-      (gSonuc.liste || []).forEach((g) => {
-        if (g.sonMesajZamani) {
-          harita[grupAnahtari(g.id)] = g.sonMesajZamani;
-        }
-        if (typeof g.okunmamisSayisi === 'number') {
-          okunmamisHarita[grupAnahtari(g.id)] = g.okunmamisSayisi;
-        }
-      });
-    }
-    if (Object.keys(harita).length > 0 && sonZamanlariGuncelle) {
-      sonZamanlariGuncelle(harita);
-    }
-    if (Object.keys(okunmamisHarita).length > 0 && okunmamislariGuncelle) {
-      okunmamislariGuncelle(okunmamisHarita);
+    try {
+      const [kSonuc, gSonuc] = await Promise.all([
+        kullanicilariGetir(sunucuAdres, kullanici, sifre),
+        gruplariGetir(sunucuAdres, kullanici, sifre),
+      ]);
+      const harita = {};
+      const okunmamisHarita = {};
+      if (kSonuc && kSonuc.tamam && Array.isArray(kSonuc.liste)) {
+        setKullanicilar(kSonuc.liste);
+        const yeniDurumlar = {};
+        kSonuc.liste.forEach((k) => {
+          if (!k || !k.kullanici) return;
+          yeniDurumlar[k.kullanici] = {
+            cevrimici: !!k.cevrimici,
+            sonGorulme: k.sonGorulme || null,
+          };
+          if (k.sonMesajZamani) {
+            harita[kisiAnahtari(k.kullanici)] = k.sonMesajZamani;
+          }
+          if (typeof k.okunmamisSayisi === 'number') {
+            okunmamisHarita[kisiAnahtari(k.kullanici)] = k.okunmamisSayisi;
+          }
+        });
+        setKullaniciDurumlari((eski) => ({ ...eski, ...yeniDurumlar }));
+      }
+      if (gSonuc && gSonuc.tamam && Array.isArray(gSonuc.liste)) {
+        setGruplar(gSonuc.liste);
+        gSonuc.liste.forEach((g) => {
+          if (!g || !g.id) return;
+          if (g.sonMesajZamani) {
+            harita[grupAnahtari(g.id)] = g.sonMesajZamani;
+          }
+          if (typeof g.okunmamisSayisi === 'number') {
+            okunmamisHarita[grupAnahtari(g.id)] = g.okunmamisSayisi;
+          }
+        });
+      }
+      if (Object.keys(harita).length > 0 && sonZamanlariGuncelle) {
+        sonZamanlariGuncelle(harita);
+      }
+      if (Object.keys(okunmamisHarita).length > 0 && okunmamislariGuncelle) {
+        okunmamislariGuncelle(okunmamisHarita);
+      }
+    } catch (e) {
+      console.warn('[veriyiYukle] Hata:', e);
     }
   }, [sunucuAdres, kullanici, sifre, sonZamanlariGuncelle, okunmamislariGuncelle]);
 
@@ -418,22 +426,27 @@ export default function AnaSayfaEkrani({
 
   // Hikayeleri getir (24 saatlik ve 30 günlük Keşfet)
   const hikayeleriYukle = useCallback(async () => {
-    const [h24, h30] = await Promise.all([
-      hikayeleriGetir(sunucuAdres, kullanici, sifre, 'aktif'),
-      hikayeleriGetir(sunucuAdres, kullanici, sifre, 'kesfet'),
-    ]);
-    if (h24.tamam) {
-      const liste = h24.liste || [];
-      setAktifHikayeler(liste);
-      // Arka planda video hikayelerini cihaz önbelleğine indir (Anında açılması için)
-      liste.forEach((h) => {
-        if (h.medyaTuru === 'video' && h.medyaUrl) {
-          const tamUrl = medyaAdresi(sunucuAdres, kullanici, sifre, h.medyaUrl);
-          videoOnbellekYoluAl(tamUrl);
-        }
-      });
+    try {
+      const [h24, h30] = await Promise.all([
+        hikayeleriGetir(sunucuAdres, kullanici, sifre, 'aktif'),
+        hikayeleriGetir(sunucuAdres, kullanici, sifre, 'kesfet'),
+      ]);
+      if (h24 && h24.tamam && Array.isArray(h24.liste)) {
+        const liste = h24.liste;
+        setAktifHikayeler(liste);
+        liste.forEach((h) => {
+          if (h && h.medyaTuru === 'video' && h.medyaUrl) {
+            const tamUrl = medyaAdresi(sunucuAdres, kullanici, sifre, h.medyaUrl);
+            videoOnbellekYoluAl(tamUrl);
+          }
+        });
+      }
+      if (h30 && h30.tamam && Array.isArray(h30.liste)) {
+        setKesfetHikayeler(h30.liste);
+      }
+    } catch (e) {
+      console.warn('[hikayeleriYukle] Hata:', e);
     }
-    if (h30.tamam) setKesfetHikayeler(h30.liste || []);
   }, [sunucuAdres, kullanici, sifre, videoOnbellekYoluAl]);
 
   useEffect(() => {
@@ -443,9 +456,20 @@ export default function AnaSayfaEkrani({
   }, [veriyiYukle, hikayeleriYukle, profilYukle, grupGuncellemeSayaci]);
 
   async function yenile() {
+    if (yenileniyor) return;
     setYenileniyor(true);
-    await Promise.all([veriyiYukle(), hikayeleriYukle(), profilYukle()]);
-    setYenileniyor(false);
+    // Asla sonsuza kadar dönmemesi için 7 saniyelik kesin emniyet zamanlayıcısı
+    const emniyetTimer = setTimeout(() => {
+      setYenileniyor(false);
+    }, 7000);
+    try {
+      await Promise.all([veriyiYukle(), hikayeleriYukle(), profilYukle()]);
+    } catch (e) {
+      console.warn('[yenile] Hata:', e);
+    } finally {
+      clearTimeout(emniyetTimer);
+      setYenileniyor(false);
+    }
   }
 
   // Toplam okunmamış mesaj sayısı
@@ -876,16 +900,20 @@ export default function AnaSayfaEkrani({
     const cevrimici = canliDurum ? canliDurum.cevrimici : item.cevrimici;
     const yaziyorMu = !!(yaziyorlar && yaziyorlar[anahtar] && yaziyorlar[anahtar][item.kullanici]);
 
-    // Son gönderilen mesajın önizlemesi
+    // Son gönderilen mesajın önizlemesi (canlı soket, depo veya sunucu)
+    const depoMesajlari = mesajDeposu && mesajDeposu[anahtar];
+    const sonDepoMesaji = depoMesajlari && depoMesajlari.length > 0 ? depoMesajlari[depoMesajlari.length - 1] : null;
+    const gercekSonMesaj = (sonMesajlar && sonMesajlar[anahtar]) || sonDepoMesaji || item.sonMesaj;
+
     let sonMesajMetin = null;
-    if (item.sonMesaj) {
-      const benMi = (item.sonMesaj.gonderen || '').toLowerCase() === (kullanici || '').toLowerCase();
+    if (gercekSonMesaj) {
+      const benMi = (gercekSonMesaj.gonderen || '').toLowerCase() === (kullanici || '').toLowerCase();
       const onEk = benMi ? 'Sen: ' : '';
-      if (item.sonMesaj.tekGorunum) sonMesajMetin = `${onEk}📷 Tek seferlik fotoğraf`;
-      else if (item.sonMesaj.medyaTuru === 'video') sonMesajMetin = `${onEk}🎥 Video`;
-      else if (item.sonMesaj.medyaTuru === 'ses') sonMesajMetin = `${onEk}🎤 Ses mesajı`;
-      else if (item.sonMesaj.medyaTuru === 'foto') sonMesajMetin = `${onEk}📷 Fotoğraf`;
-      else if (item.sonMesaj.metin) sonMesajMetin = `${onEk}${item.sonMesaj.metin}`;
+      if (gercekSonMesaj.tekGorunum) sonMesajMetin = `${onEk}📷 Tek seferlik fotoğraf`;
+      else if (gercekSonMesaj.medyaTuru === 'video') sonMesajMetin = `${onEk}🎥 Video`;
+      else if (gercekSonMesaj.medyaTuru === 'ses') sonMesajMetin = `${onEk}🎤 Ses mesajı`;
+      else if (gercekSonMesaj.medyaTuru === 'foto') sonMesajMetin = `${onEk}📷 Fotoğraf`;
+      else if (gercekSonMesaj.metin) sonMesajMetin = `${onEk}${gercekSonMesaj.metin}`;
     }
 
     return (
@@ -916,13 +944,21 @@ export default function AnaSayfaEkrani({
         <View style={styles.satirOrta}>
           <Text style={styles.satirBaslik}>{item.kullanici}</Text>
           {yaziyorMu ? (
-            <Text style={[styles.satirAltyazi, { color: renkler.basarili }]} numberOfLines={1}>yazıyor...</Text>
+            <Text style={[styles.satirAltyazi, { color: renkler.basarili, fontWeight: '600' }]} numberOfLines={1}>yazıyor...</Text>
           ) : sonMesajMetin ? (
-            <Text style={[styles.satirAltyazi, okunmamis > 0 && { color: renkler.metin, fontWeight: '600' }]} numberOfLines={1}>
+            <Text
+              style={[
+                styles.satirAltyazi,
+                okunmamis > 0
+                  ? { color: '#ffffff', fontWeight: '700', opacity: 1 }
+                  : { color: renkler.metinSoluk, fontWeight: '400', opacity: 0.8 },
+              ]}
+              numberOfLines={1}
+            >
               {sonMesajMetin}
             </Text>
           ) : (
-            <Text style={[styles.satirAltyazi, { fontStyle: 'italic', opacity: 0.6 }]} numberOfLines={1}>
+            <Text style={[styles.satirAltyazi, { fontStyle: 'italic', opacity: 0.5 }]} numberOfLines={1}>
               Sohbeti başlatın
             </Text>
           )}
@@ -963,14 +999,18 @@ export default function AnaSayfaEkrani({
     const grupYaziyorMetni = grupYazanlar.length > 0 ? `${grupYazanlar[0]} yazıyor...` : null;
 
     let grupSonMesajMetin = null;
-    if (item.sonMesaj) {
-      const benMi = (item.sonMesaj.gonderen || '').toLowerCase() === (kullanici || '').toLowerCase();
-      const onEk = benMi ? 'Sen: ' : `${item.sonMesaj.gonderen}: `;
-      if (item.sonMesaj.tekGorunum) grupSonMesajMetin = `${onEk}📷 Tek seferlik fotoğraf`;
-      else if (item.sonMesaj.medyaTuru === 'video') grupSonMesajMetin = `${onEk}🎥 Video`;
-      else if (item.sonMesaj.medyaTuru === 'ses') grupSonMesajMetin = `${onEk}🎤 Ses mesajı`;
-      else if (item.sonMesaj.medyaTuru === 'foto') grupSonMesajMetin = `${onEk}📷 Fotoğraf`;
-      else if (item.sonMesaj.metin) grupSonMesajMetin = `${onEk}${item.sonMesaj.metin}`;
+    const depoMesajlari = mesajDeposu && mesajDeposu[anahtar];
+    const sonDepoMesaji = depoMesajlari && depoMesajlari.length > 0 ? depoMesajlari[depoMesajlari.length - 1] : null;
+    const gercekSonMesaj = (sonMesajlar && sonMesajlar[anahtar]) || sonDepoMesaji || item.sonMesaj;
+
+    if (gercekSonMesaj) {
+      const benMi = (gercekSonMesaj.gonderen || '').toLowerCase() === (kullanici || '').toLowerCase();
+      const onEk = benMi ? 'Sen: ' : `${gercekSonMesaj.gonderen}: `;
+      if (gercekSonMesaj.tekGorunum) grupSonMesajMetin = `${onEk}📷 Tek seferlik fotoğraf`;
+      else if (gercekSonMesaj.medyaTuru === 'video') grupSonMesajMetin = `${onEk}🎥 Video`;
+      else if (gercekSonMesaj.medyaTuru === 'ses') grupSonMesajMetin = `${onEk}🎤 Ses mesajı`;
+      else if (gercekSonMesaj.medyaTuru === 'foto') grupSonMesajMetin = `${onEk}📷 Fotoğraf`;
+      else if (gercekSonMesaj.metin) grupSonMesajMetin = `${onEk}${gercekSonMesaj.metin}`;
     }
 
     return (
@@ -1010,9 +1050,17 @@ export default function AnaSayfaEkrani({
         <View style={styles.satirOrta}>
           <Text style={styles.satirBaslik}>{item?.isim || 'Grup'}</Text>
           {grupYaziyorMetni ? (
-            <Text style={[styles.satirAltyazi, { color: renkler.basarili }]} numberOfLines={1}>{grupYaziyorMetni}</Text>
+            <Text style={[styles.satirAltyazi, { color: renkler.basarili, fontWeight: '600' }]} numberOfLines={1}>{grupYaziyorMetni}</Text>
           ) : grupSonMesajMetin ? (
-            <Text style={[styles.satirAltyazi, okunmamis > 0 && { color: renkler.metin, fontWeight: '600' }]} numberOfLines={1}>
+            <Text
+              style={[
+                styles.satirAltyazi,
+                okunmamis > 0
+                  ? { color: '#ffffff', fontWeight: '700', opacity: 1 }
+                  : { color: renkler.metinSoluk, fontWeight: '400', opacity: 0.8 },
+              ]}
+              numberOfLines={1}
+            >
               {grupSonMesajMetin}
             </Text>
           ) : (
