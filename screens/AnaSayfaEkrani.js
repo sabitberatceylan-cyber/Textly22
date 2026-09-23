@@ -255,6 +255,10 @@ export default function AnaSayfaEkrani({
     gizlenenSohbetler,
     sonZamanlariGuncelle,
     okunmamislariGuncelle,
+    gruplar,
+    gruplariAyarla,
+    grupEkle,
+    grupBilgileri,
   } = useSoket();
 
   // 4 Bottom Tabs: 'sohbetler' | 'kesfet' | 'hikayeEkle' | 'profil'
@@ -266,7 +270,6 @@ export default function AnaSayfaEkrani({
   const [dogumTarihiGizli, setDogumTarihiGizli] = useState(!!oturum?.dogumTarihiGizli);
   const [okunduBilgisiGizli, setOkunduBilgisiGizli] = useState(!!oturum?.okunduBilgisiGizli);
   const [sonGorulmeGizli, setSonGorulmeGizli] = useState(!!oturum?.sonGorulmeGizli);
-  const [gruplar, setGruplar] = useState([]);
   const [yenileniyor, setYenileniyor] = useState(false);
   const [aramaMetni, setAramaMetni] = useState('');
 
@@ -346,10 +349,13 @@ export default function AnaSayfaEkrani({
   // Sohbetleri ve kullanıcıları yükle
   const veriyiYukle = useCallback(async () => {
     try {
-      const [kSonuc, gSonuc] = await Promise.all([
+      const sonuclar = await Promise.allSettled([
         kullanicilariGetir(sunucuAdres, kullanici, sifre),
         gruplariGetir(sunucuAdres, kullanici, sifre),
       ]);
+      const kSonuc = sonuclar[0].status === 'fulfilled' ? sonuclar[0].value : null;
+      const gSonuc = sonuclar[1].status === 'fulfilled' ? sonuclar[1].value : null;
+
       const harita = {};
       const okunmamisHarita = {};
       if (kSonuc && kSonuc.tamam && Array.isArray(kSonuc.liste)) {
@@ -371,7 +377,7 @@ export default function AnaSayfaEkrani({
         setKullaniciDurumlari((eski) => ({ ...eski, ...yeniDurumlar }));
       }
       if (gSonuc && gSonuc.tamam && Array.isArray(gSonuc.liste)) {
-        setGruplar(gSonuc.liste);
+        gruplariAyarla(gSonuc.liste);
         gSonuc.liste.forEach((g) => {
           if (!g || !g.id) return;
           if (g.sonMesajZamani) {
@@ -391,7 +397,7 @@ export default function AnaSayfaEkrani({
     } catch (e) {
       console.warn('[veriyiYukle] Hata:', e);
     }
-  }, [sunucuAdres, kullanici, sifre, sonZamanlariGuncelle, okunmamislariGuncelle]);
+  }, [sunucuAdres, kullanici, sifre, sonZamanlariGuncelle, okunmamislariGuncelle, gruplariAyarla]);
 
   // Video hikayelerini yerel önbelleğe alma (Gecikmesiz / Anında başlatma)
   const videoOnbellekHaritasi = useRef(new Map()).current;
@@ -1008,6 +1014,13 @@ export default function AnaSayfaEkrani({
   // ----------------------------------------------------
   function grupSatiriRender({ item }) {
     const anahtar = grupAnahtari(item.id);
+    const gBilgi = grupBilgileri && grupBilgileri[item.id];
+    const gIsim = gBilgi?.isim || item?.isim || 'Grup';
+    const gResim = gBilgi?.resimUrl || item?.resimUrl || null;
+    const gUyeler = gBilgi?.uyeler || item?.uyeler || [];
+    const gYonetici = gBilgi?.yonetici || item?.yonetici;
+    const gYoneticiler = gBilgi?.yoneticiler || item?.yoneticiler || (gYonetici ? [gYonetici] : []);
+
     const okunmamis = (okunmamisSayilar && okunmamisSayilar[anahtar] !== undefined)
       ? okunmamisSayilar[anahtar]
       : (item.okunmamisSayisi || 0);
@@ -1040,34 +1053,34 @@ export default function AnaSayfaEkrani({
           onSohbetAc({
             hedefTuru: 'grup',
             hedef: item.id,
-            baslik: item?.isim || 'Grup',
-            uyeler: item?.uyeler || [],
-            yonetici: item?.yonetici,
-            yoneticiler: item?.yoneticiler || (item?.yonetici ? [item?.yonetici] : []),
-            resimUrl: item?.resimUrl || null,
+            baslik: gIsim,
+            uyeler: gUyeler,
+            yonetici: gYonetici,
+            yoneticiler: gYoneticiler,
+            resimUrl: gResim,
           })
         }
       >
         <TouchableOpacity
           style={styles.avatarKutu}
-          activeOpacity={item.resimUrl ? 0.75 : 1}
+          activeOpacity={gResim ? 0.75 : 1}
           onPress={() => {
-            if (item.resimUrl) {
-              setBuyukFotoUrl(medyaAdresi(sunucuAdres, kullanici, sifre, item.resimUrl));
+            if (gResim) {
+              setBuyukFotoUrl(medyaAdresi(sunucuAdres, kullanici, sifre, gResim));
             }
           }}
         >
-          {item.resimUrl ? (
-            <Image source={{ uri: medyaAdresi(sunucuAdres, kullanici, sifre, item.resimUrl) }} style={styles.avatar} />
+          {gResim ? (
+            <Image source={{ uri: medyaAdresi(sunucuAdres, kullanici, sifre, gResim) }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, { backgroundColor: renkler.kendiBalon }]}>
-              <Text style={[styles.avatarMetin, { color: '#ffffff' }]}>{(item?.isim || 'Grup').slice(0, 1).toUpperCase()}</Text>
+              <Text style={[styles.avatarMetin, { color: '#ffffff' }]}>{gIsim.slice(0, 1).toUpperCase()}</Text>
             </View>
           )}
         </TouchableOpacity>
 
         <View style={styles.satirOrta}>
-          <Text style={styles.satirBaslik}>{item?.isim || 'Grup'}</Text>
+          <Text style={styles.satirBaslik}>{gIsim}</Text>
           {grupYaziyorMetni ? (
             <Text style={[styles.satirAltyazi, { color: renkler.basarili, fontWeight: '600' }]} numberOfLines={1}>{grupYaziyorMetni}</Text>
           ) : grupSonMesajMetin ? (
@@ -1967,25 +1980,27 @@ export default function AnaSayfaEkrani({
             />
             <Text style={[styles.etiket, { marginTop: 12, marginBottom: 8 }]}>ÜYELERİ SEÇ</Text>
             <ScrollView style={styles.uyeListesi}>
-              {kullanicilar.map((k) => {
-                const secili = seciliUyeler.includes(k.kullanici);
-                return (
-                  <TouchableOpacity
-                    key={k.kullanici}
-                    style={styles.uyeSatiri}
-                    onPress={() => {
-                      setSeciliUyeler((prev) =>
-                        prev.includes(k.kullanici) ? prev.filter((u) => u !== k.kullanici) : [...prev, k.kullanici]
-                      );
-                    }}
-                  >
-                    <View style={[styles.onayKutusu, secili && styles.onayKutusuSecili]}>
-                      {secili && <Text style={styles.onayIsareti}>✓</Text>}
-                    </View>
-                    <Text style={styles.uyeMetin}>{k.kullanici}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+              {(kullanicilar || [])
+                .filter((k) => k && k.kullanici && k.kullanici.toLowerCase() !== (kullanici || '').toLowerCase())
+                .map((k) => {
+                  const secili = seciliUyeler.includes(k.kullanici);
+                  return (
+                    <TouchableOpacity
+                      key={k.kullanici}
+                      style={styles.uyeSatiri}
+                      onPress={() => {
+                        setSeciliUyeler((prev) =>
+                          prev.includes(k.kullanici) ? prev.filter((u) => u !== k.kullanici) : [...prev, k.kullanici]
+                        );
+                      }}
+                    >
+                      <View style={[styles.onayKutusu, secili && styles.onayKutusuSecili]}>
+                        {secili && <Text style={styles.onayIsareti}>✓</Text>}
+                      </View>
+                      <Text style={styles.uyeMetin}>{k.kullanici}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
             </ScrollView>
             <TouchableOpacity
               style={[styles.buton, { marginTop: 16 }]}
@@ -2013,7 +2028,7 @@ export default function AnaSayfaEkrani({
                     sonMesaj: null,
                     okunmamisSayisi: 0,
                   };
-                  setGruplar((eski) => [yeniGrupObj, ...eski.filter((g) => String(g.id) !== String(res.id))]);
+                  grupEkle(yeniGrupObj);
                   if (sonZamanlariGuncelle) {
                     sonZamanlariGuncelle({ [grupAnahtari(res.id)]: simdi });
                   }

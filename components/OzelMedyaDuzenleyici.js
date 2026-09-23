@@ -14,6 +14,7 @@ import {
   Platform,
   StatusBar,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
@@ -800,6 +801,8 @@ const styles = StyleSheet.create({
 // -------------------------------------------------------------------
 function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
   const insets = useSafeAreaInsets();
+  const [islemUri, setIslemUri] = useState(resimUri);
+  const [hazirlaniyor, setHazirlaniyor] = useState(true);
   const [dogalBoyut, setDogalBoyut] = useState({ w: 0, h: 0 });
   const [canvasBoyut, setCanvasBoyut] = useState({ w: 0, h: 0 });
   const [cropBox, setCropBox] = useState({ x: 0, y: 0, w: 0, h: 0 });
@@ -811,39 +814,72 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
   const canvasRef = useRef({ w: 0, h: 0 });
   canvasRef.current = canvasBoyut;
 
-  // Görsel boyutunu al ve canvası hesapla
+  // Görseli belleğe güvenli boyutta hazırla (EXIF yönünü kesinleştirir ve OOM çöküşünü önler)
   useEffect(() => {
     if (!visible || !resimUri) return;
-    Image.getSize(
-      resimUri,
-      (w, h) => {
-        const dogalW = w > 0 ? w : 1080;
-        const dogalH = h > 0 ? h : 1920;
-        setDogalBoyut({ w: dogalW, h: dogalH });
+    let iptal = false;
+    setHazirlaniyor(true);
+
+    (async () => {
+      try {
+        const norm = await ImageManipulator.manipulateAsync(
+          resimUri,
+          [{ resize: { width: 1600 } }],
+          { compress: 0.95, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        if (iptal) return;
+        const normW = norm.width || 1200;
+        const normH = norm.height || 1600;
+        setIslemUri(norm.uri);
+        setDogalBoyut({ w: normW, h: normH });
+
         const maxW = EKRAN_GENISLIK - 32;
         const maxH = EKRAN_YUKSEKLIK - insets.top - insets.bottom - 180;
-        const scale = Math.min(maxW / dogalW, maxH / dogalH);
-        const cW = Math.max(100, Math.round(dogalW * scale));
-        const cH = Math.max(100, Math.round(dogalH * scale));
+        const scale = Math.min(maxW / normW, maxH / normH);
+        const cW = Math.max(100, Math.round(normW * scale));
+        const cH = Math.max(100, Math.round(normH * scale));
+
         setCanvasBoyut({ w: cW, h: cH });
         setCropBox({ x: 0, y: 0, w: cW, h: cH });
         setSeciliOran('serbest');
-      },
-      (e) => {
-        console.warn('Görsel boyutu alınamadı, varsayılan boyut kullanılıyor:', e);
-        const dogalW = 1080;
-        const dogalH = 1920;
-        setDogalBoyut({ w: dogalW, h: dogalH });
-        const maxW = EKRAN_GENISLIK - 32;
-        const maxH = EKRAN_YUKSEKLIK - insets.top - insets.bottom - 180;
-        const scale = Math.min(maxW / dogalW, maxH / dogalH);
-        const cW = Math.max(100, Math.round(dogalW * scale));
-        const cH = Math.max(100, Math.round(dogalH * scale));
-        setCanvasBoyut({ w: cW, h: cH });
-        setCropBox({ x: 0, y: 0, w: cW, h: cH });
-        setSeciliOran('serbest');
+      } catch (err) {
+        console.warn('Görsel hazırlama hatası, doğrudan uri kullanılıyor:', err);
+        if (iptal) return;
+        setIslemUri(resimUri);
+        Image.getSize(
+          resimUri,
+          (w, h) => {
+            if (iptal) return;
+            const dogalW = w > 0 ? w : 1080;
+            const dogalH = h > 0 ? h : 1920;
+            setDogalBoyut({ w: dogalW, h: dogalH });
+            const maxW = EKRAN_GENISLIK - 32;
+            const maxH = EKRAN_YUKSEKLIK - insets.top - insets.bottom - 180;
+            const scale = Math.min(maxW / dogalW, maxH / dogalH);
+            const cW = Math.max(100, Math.round(dogalW * scale));
+            const cH = Math.max(100, Math.round(dogalH * scale));
+            setCanvasBoyut({ w: cW, h: cH });
+            setCropBox({ x: 0, y: 0, w: cW, h: cH });
+            setSeciliOran('serbest');
+          },
+          () => {
+            if (iptal) return;
+            const cW = Math.round(EKRAN_GENISLIK - 32);
+            const cH = Math.round(EKRAN_YUKSEKLIK * 0.6);
+            setDogalBoyut({ w: cW, h: cH });
+            setCanvasBoyut({ w: cW, h: cH });
+            setCropBox({ x: 0, y: 0, w: cW, h: cH });
+            setSeciliOran('serbest');
+          }
+        );
+      } finally {
+        if (!iptal) setHazirlaniyor(false);
       }
-    );
+    })();
+
+    return () => {
+      iptal = true;
+    };
   }, [visible, resimUri, insets]);
 
   function oranaAyarla(oranKey) {
@@ -1043,7 +1079,8 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
   ).current;
 
   async function kirpVeUygula() {
-    if (!resimUri || cropBox.w <= 0 || cropBox.h <= 0 || canvasBoyut.w <= 0 || canvasBoyut.h <= 0) return;
+    const kaynak = islemUri || resimUri;
+    if (!kaynak || cropBox.w <= 0 || cropBox.h <= 0 || canvasBoyut.w <= 0 || canvasBoyut.h <= 0) return;
     setKirpiliyor(true);
     try {
       let realW = dogalBoyut.w;
@@ -1059,16 +1096,14 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
       let width = Math.round(cropBox.w * scaleW);
       let height = Math.round(cropBox.h * scaleH);
 
-      if (isNaN(originX) || originX < 0) originX = 0;
-      if (isNaN(originY) || originY < 0) originY = 0;
-      if (isNaN(width) || width <= 10) width = Math.max(10, realW - originX);
-      if (isNaN(height) || height <= 10) height = Math.max(10, realH - originY);
-
-      if (originX + width > realW) width = Math.max(10, realW - originX);
-      if (originY + height > realH) height = Math.max(10, realH - originY);
+      // Sıkı sınırlar (clamping) - Android native createBitmap asla sınır dışına taşamaz
+      originX = Math.max(0, Math.min(originX, realW - 20));
+      originY = Math.max(0, Math.min(originY, realH - 20));
+      width = Math.max(20, Math.min(width, realW - originX));
+      height = Math.max(20, Math.min(height, realH - originY));
 
       const sonuc = await ImageManipulator.manipulateAsync(
-        resimUri,
+        kaynak,
         [{ crop: { originX, originY, width, height } }],
         { compress: 0.95, format: ImageManipulator.SaveFormat.JPEG }
       );
@@ -1096,20 +1131,22 @@ function GorselKirpici({ visible, resimUri, onKapat, onKirpildi }) {
             <Text style={styles.kirpmaIptalMetin}>Vazgeç</Text>
           </TouchableOpacity>
           <Text style={styles.kirpmaBaslikMetin}>Fotoğrafı Kırp</Text>
-          <TouchableOpacity onPress={kirpVeUygula} disabled={kirpiliyor} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity onPress={kirpVeUygula} disabled={kirpiliyor || hazirlaniyor} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             {kirpiliyor ? (
               <ActivityIndicator color="#00a8ff" size="small" />
             ) : (
-              <Text style={styles.kirpmaUygulaMetin}>Kırp</Text>
+              <Text style={[styles.kirpmaUygulaMetin, hazirlaniyor && { opacity: 0.5 }]}>Kırp</Text>
             )}
           </TouchableOpacity>
         </View>
 
         {/* Görsel ve Kırpma Alanı */}
         <View style={styles.kirpmaGovde}>
-          {canvasBoyut.w > 0 && canvasBoyut.h > 0 && (
+          {hazirlaniyor ? (
+            <ActivityIndicator size="large" color="#00a8ff" />
+          ) : canvasBoyut.w > 0 && canvasBoyut.h > 0 ? (
             <View style={[styles.kirpmaCanvas, { width: canvasBoyut.w, height: canvasBoyut.h }]}>
-              <Image source={{ uri: resimUri }} style={{ width: canvasBoyut.w, height: canvasBoyut.h }} resizeMode="contain" />
+              <Image source={{ uri: islemUri || resimUri }} style={{ width: canvasBoyut.w, height: canvasBoyut.h }} resizeMode="contain" />
 
               {/* 4 Taraflı Karartma Maskeleri */}
               <View style={[styles.kirpmaMaske, { top: 0, left: 0, right: 0, height: cropBox.y }]} />

@@ -429,6 +429,7 @@ export default function SohbetEkrani({
     mesajGonder, okunduBildir, yaziyorBildir, yazmayiBiraktimBildir,
     begeniDegistir, mesajDuzenle, mesajSil, gecmisiIcinYukle, aktifSohbetAyarla, benimAdim,
     tekGorunumGorulduBildir, temaDegistirBildir, temaHaberleri, sonIslemHatasi, sohbetiGizle,
+    grupGuncelle,
   } = useSoket();
   const insets = useSafeAreaInsets();
 
@@ -1058,6 +1059,9 @@ export default function SohbetEkrani({
       setGrupGuncellemeDurumu({ basarili: false, mesaj: sonuc.hata || 'Grup güncellenemedi.' });
     } else {
       setGrupGuncellemeDurumu({ basarili: true, mesaj: '✓ Grup bilgileri başarıyla güncellendi' });
+      if (grupGuncelle) {
+        grupGuncelle(hedef, { isim: grupIsimDuzenle, aciklama: grupAciklamaDuzenle });
+      }
       setTimeout(() => {
         setGrupGuncellemeDurumu(null);
       }, 3500);
@@ -1079,6 +1083,9 @@ export default function SohbetEkrani({
       Alert.alert('Olmadı', sonuc.hata || 'Grup resmi güncellenemedi.');
     } else {
       setYerelGrupResimUrl(yuklendi.url);
+      if (grupGuncelle) {
+        grupGuncelle(hedef, { resimUrl: yuklendi.url });
+      }
     }
   }
 

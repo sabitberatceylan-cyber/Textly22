@@ -2,7 +2,7 @@
   "expo": {
     "name": "Textly",
     "slug": "textly",
-    "version": "5.0.8",
+    "version": "5.0.9",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0d1117",
@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.senindomainin.mesaj",
-      "versionCode": 508,
+      "versionCode": 509,
       "googleServicesFile": "./google-services.json",
       "usesCleartextTraffic": true,
       "permissions": [

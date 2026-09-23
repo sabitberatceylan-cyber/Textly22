@@ -14,7 +14,7 @@ import { bildirimlerICinKurulumYap, tumBildirimleriTemizle } from './lib/bildiri
 import * as Notifications from 'expo-notifications';
 import appConfig from './app.json';
 
-const MEVCUT_VERSIYON_KODU = Number(appConfig?.expo?.android?.versionCode) || 507;
+const MEVCUT_VERSIYON_KODU = Number(appConfig?.expo?.android?.versionCode) || 509;
 const SABIT_SUNUCU_URL = 'https://exzehub.com.tr';
 
 function SoketGuncellemeDinleyici({ onYeniGuncelleme }) {
