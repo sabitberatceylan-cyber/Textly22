@@ -50,6 +50,7 @@ import { kameraIleCek, medyaSec, medyayiBase64Yap } from '../lib/medya';
 import OzelKameraModal from '../components/OzelKameraModal';
 import OzelMedyaDuzenleyici from '../components/OzelMedyaDuzenleyici';
 import OzelTarihSeciciModal from '../components/OzelTarihSeciciModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: EKRAN_GENISLIK, height: EKRAN_YUKSEKLIK } = Dimensions.get('window');
 
@@ -275,6 +276,22 @@ export default function AnaSayfaEkrani({
   const [yenileniyor, setYenileniyor] = useState(false);
   const [aramaMetni, setAramaMetni] = useState('');
 
+  // Kişisel sohbet listesini başlangıçta önbellekten yükle (çevrimdışıyken bile görünsün)
+  useEffect(() => {
+    (async () => {
+      try {
+        const onbellekAnahtari = `@textly_kisiler_cache_${kullanici}`;
+        const ham = await AsyncStorage.getItem(onbellekAnahtari);
+        if (ham) {
+          const liste = JSON.parse(ham);
+          if (Array.isArray(liste) && liste.length > 0) {
+            setKullanicilar(liste);
+          }
+        }
+      } catch {}
+    })();
+  }, [kullanici]);
+
   // Büyük Profil / Medya Fotoğrafı Modal State
   const [buyukFotoUrl, setBuyukFotoUrl] = useState(null);
 
@@ -362,6 +379,8 @@ export default function AnaSayfaEkrani({
       const okunmamisHarita = {};
       if (kSonuc && kSonuc.tamam && Array.isArray(kSonuc.liste)) {
         setKullanicilar(kSonuc.liste);
+        // Önbelleğe kaydet — çevrimdışıyken de göstermek için
+        AsyncStorage.setItem(`@textly_kisiler_cache_${kullanici}`, JSON.stringify(kSonuc.liste)).catch(() => {});
         const yeniDurumlar = {};
         kSonuc.liste.forEach((k) => {
           if (!k || !k.kullanici) return;
