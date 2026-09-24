@@ -17,6 +17,7 @@ import {
   ozelCikartmaKullanildi,
   ozelCikartmaSil,
   fotograftanCikartmaYap,
+  galeridenCokluCikartmaSec,
   whatsappCikartmasiAktar,
 } from '../lib/cikartmalar';
 import { medyaAdresi } from '../lib/api';
@@ -103,7 +104,7 @@ export default function CikartmaPaneli({
 
   if (!visible) return null;
 
-  // Fotoğraftan çıkartma yap
+  // Fotoğraftan tekli çıkartma yap (1:1 kare kırpma)
   async function handleFotoCikartma() {
     setIslemSuruyor(true);
     setIlerlemeMetni('Fotoğraf işleniyor...');
@@ -119,10 +120,30 @@ export default function CikartmaPaneli({
     }
   }
 
-  // WhatsApp çıkartması veya ZIP arşivi aktar
+  // Galeriden veya WhatsApp klasöründen tek seferde onlarca çıkartmayı seçip ekle
+  async function handleCokluGaleri() {
+    setIslemSuruyor(true);
+    setIlerlemeMetni('Galeri açılıyor...');
+    const sonuc = await galeridenCokluCikartmaSec(sunucuAdres, kullanici, sifre, (ilerleme) => {
+      if (ilerleme && ilerleme.metin) {
+        setIlerlemeMetni(ilerleme.metin);
+      }
+    });
+    setIslemSuruyor(false);
+    setIlerlemeMetni('');
+    if (sonuc.tamam) {
+      setOzelCikartmalar(sonuc.liste || []);
+      setAktifSekme('ozel');
+      Alert.alert('Harika!', `${sonuc.adet} adet çıkartma başarıyla Çıkartmalarım listesine eklendi!`);
+    } else if (sonuc.hata) {
+      Alert.alert('Hata', sonuc.hata);
+    }
+  }
+
+  // ZIP arşivi veya çıkartma dosyası aktar
   async function handleWhatsAppAktar() {
     setIslemSuruyor(true);
-    setIlerlemeMetni('Dosya yöneticisi açılıyor...');
+    setIlerlemeMetni('Dosya seçici açılıyor...');
     const sonuc = await whatsappCikartmasiAktar(sunucuAdres, kullanici, sifre, (ilerleme) => {
       if (ilerleme && ilerleme.metin) {
         setIlerlemeMetni(ilerleme.metin);
@@ -134,7 +155,7 @@ export default function CikartmaPaneli({
       setOzelCikartmalar(sonuc.liste || []);
       setAktifSekme('ozel');
       if (sonuc.adet && sonuc.adet > 1) {
-        Alert.alert('Harika!', `ZIP arşivinden ${sonuc.adet} adet çıkartma başarıyla çözüldü ve eklendi!`);
+        Alert.alert('Harika!', `Arşivden ${sonuc.adet} adet çıkartma başarıyla çözüldü ve eklendi!`);
       } else {
         Alert.alert('Başarılı', 'Çıkartma başarıyla aktarıldı.');
       }
@@ -226,7 +247,17 @@ export default function CikartmaPaneli({
             disabled={islemSuruyor}
           >
             <Text style={[styles.aksiyonButonMetin, { color: renkler.vurgu || '#00a8ff' }]}>
-              + Fotoğraftan Yap
+              ✂️ Kırp
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.aksiyonButon, { backgroundColor: '#8e44ad22', borderColor: '#8e44ad' }]}
+            onPress={handleCokluGaleri}
+            disabled={islemSuruyor}
+          >
+            <Text style={[styles.aksiyonButonMetin, { color: '#a29bfe' }]}>
+              🖼️ Çoklu Seç
             </Text>
           </TouchableOpacity>
 
@@ -236,7 +267,7 @@ export default function CikartmaPaneli({
             disabled={islemSuruyor}
           >
             <Text style={[styles.aksiyonButonMetin, { color: renkler.basarili || '#2ea44f' }]}>
-              📁 Dosya / ZIP (.webp)
+              📦 ZIP Aktar
             </Text>
           </TouchableOpacity>
         </View>
