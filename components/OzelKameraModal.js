@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { medyaSec } from '../lib/medya';
 import OzelMedyaDuzenleyici from './OzelMedyaDuzenleyici';
 
@@ -173,20 +174,54 @@ export default function OzelKameraModal({
     if (!cameraRef.current) return;
     try {
       const foto = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
-        base64: true,
+        quality: 0.9,
+        base64: false,
         shutterSound: false,
+        skipProcessing: false,
       });
       if (foto?.uri) {
         if (mod === 'profil') {
-          onGonder({ secim: { uri: foto.uri, tur: 'foto', base64: foto.base64 || null, mimeTuru: 'image/jpeg' } });
+          onGonder({ secim: { uri: foto.uri, tur: 'foto', base64: null, mimeTuru: 'image/jpeg' } });
           onKapat();
           return;
         }
+
+        // Vizör tam ekran dikey gösteriyor; fotoğraf sensörden 4:3 geliyor.
+        // Çekilen fotovu vizör aspect ratio'suna (ekran) krop ediyoruz.
+        let finalUri = foto.uri;
+        try {
+          const fotoGenislik = foto.width || 0;
+          const fotoYukseklik = foto.height || 0;
+          if (fotoGenislik > 0 && fotoYukseklik > 0) {
+            // Hedef oran: vizör portrait (ekran yükseklik / ekran genişlik)
+            const hedefOran = EKRAN_YUKSEKLIK / EKRAN_GENISLIK;
+            const mevcut = fotoYukseklik / fotoGenislik;
+            if (Math.abs(mevcut - hedefOran) > 0.05) {
+              // Krop gerekli
+              let kropGenislik = fotoGenislik;
+              let kropYukseklik = Math.round(fotoGenislik * hedefOran);
+              if (kropYukseklik > fotoYukseklik) {
+                kropYukseklik = fotoYukseklik;
+                kropGenislik = Math.round(fotoYukseklik / hedefOran);
+              }
+              const originX = Math.round((fotoGenislik - kropGenislik) / 2);
+              const originY = Math.round((fotoYukseklik - kropYukseklik) / 2);
+              const kirpilmis = await ImageManipulator.manipulateAsync(
+                foto.uri,
+                [{ crop: { originX, originY, width: kropGenislik, height: kropYukseklik } }],
+                { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
+              );
+              finalUri = kirpilmis.uri;
+            }
+          }
+        } catch (e) {
+          console.warn('Krop başarısız, orijinal kullanılıyor:', e);
+        }
+
         setYakalananMedya({
-          uri: foto.uri,
+          uri: finalUri,
           tur: 'foto',
-          base64: foto.base64 || null,
+          base64: null,
           mimeTuru: 'image/jpeg',
         });
       }

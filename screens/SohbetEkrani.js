@@ -625,7 +625,14 @@ export default function SohbetEkrani({
 
   useEffect(() => {
     aktifSohbetAyarla(anahtar);
-    return () => aktifSohbetAyarla(null);
+    // Sunucunun sonAktifZaman'ını canlı tutmak için heartbeat — bildirim engeli çalışsın
+    const heartbeat = setInterval(() => {
+      aktifSohbetAyarla(anahtar);
+    }, 20000);
+    return () => {
+      clearInterval(heartbeat);
+      aktifSohbetAyarla(null);
+    };
   }, [anahtar, aktifSohbetAyarla]);
 
   useEffect(() => {

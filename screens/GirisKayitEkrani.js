@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { bosluk } from '../theme';
 import { useTema } from '../lib/temaBaglami';
 import { kayitOl, girisYap } from '../lib/api';
+import OzelTarihSeciciModal from '../components/OzelTarihSeciciModal';
 
 const SABIT_SUNUCU = 'https://exzehub.com.tr';
 
@@ -24,19 +25,9 @@ export default function GirisKayitEkrani({ onGiris }) {
   const [kullaniciAdi, setKullaniciAdi] = useState('');
   const [sifre, setSifre] = useState('');
   const [dogumTarihi, setDogumTarihi] = useState('');
+  const [tarihSeciciAcik, setTarihSeciciAcik] = useState(false);
   const [hata, setHata] = useState('');
   const [yukleniyor, setYukleniyor] = useState(false);
-
-  function dogumTarihiFormatla(text) {
-    const rakamlar = text.replace(/\D/g, '').slice(0, 8);
-    if (rakamlar.length <= 2) {
-      setDogumTarihi(rakamlar);
-    } else if (rakamlar.length <= 4) {
-      setDogumTarihi(`${rakamlar.slice(0, 2)}.${rakamlar.slice(2)}`);
-    } else {
-      setDogumTarihi(`${rakamlar.slice(0, 2)}.${rakamlar.slice(2, 4)}.${rakamlar.slice(4)}`);
-    }
-  }
 
   async function gonder() {
     const adres = SABIT_SUNUCU;
@@ -127,15 +118,15 @@ export default function GirisKayitEkrani({ onGiris }) {
           {kayitModu && (
             <View style={styles.alanGrubu}>
               <Text style={styles.etiket}>DOĞUM TARİHİ (İSTEĞE BAĞLI)</Text>
-              <TextInput
-                style={styles.girdi}
-                placeholder="GG.AA.YYYY (Örn. 15.06.2000)"
-                placeholderTextColor={renkler.metinSoluk}
-                value={dogumTarihi}
-                onChangeText={dogumTarihiFormatla}
-                keyboardType="numeric"
-                maxLength={10}
-              />
+              <TouchableOpacity
+                style={[styles.girdi, { justifyContent: 'center' }]}
+                onPress={() => setTarihSeciciAcik(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: dogumTarihi ? renkler.metin : renkler.metinSoluk, fontSize: 16 }}>
+                  {dogumTarihi || 'GG.AA.YYYY (Örn. 15.06.2000)'}
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -155,6 +146,16 @@ export default function GirisKayitEkrani({ onGiris }) {
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <OzelTarihSeciciModal
+        visible={tarihSeciciAcik}
+        mevcutTarih={dogumTarihi || '01.01.2000'}
+        onKapat={() => setTarihSeciciAcik(false)}
+        onKaydet={(secilenTarih) => {
+          setDogumTarihi(secilenTarih);
+          setTarihSeciciAcik(false);
+        }}
+      />
     </SafeAreaView>
   );
 }
