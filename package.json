@@ -1,8 +1,6 @@
 {
   "name": "textly",
-  "version": "5.2.6",
-
-
+  "version": "5.2.8",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
@@ -24,6 +22,7 @@
     "expo-notifications": "~0.28.19",
     "expo-status-bar": "~1.12.1",
     "expo-system-ui": "~3.0.7",
+    "jszip": "^3.10.2",
     "react": "18.2.0",
     "react-native": "0.74.5",
     "react-native-safe-area-context": "4.10.5"

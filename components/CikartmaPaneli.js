@@ -13,6 +13,8 @@ import {
 import {
   VARSAYILAN_PAKETLER,
   ozelCikartmalariYukle,
+  ozelCikartmaKaydet,
+  ozelCikartmaKullanildi,
   ozelCikartmaSil,
   fotograftanCikartmaYap,
   whatsappCikartmasiAktar,
@@ -80,11 +82,12 @@ export default function CikartmaPaneli({
   sifre,
   renkler,
 }) {
-  const [aktifSekme, setAktifSekme] = useState('duygular'); // 'ozel' | 'duygular' | 'tepkiler' | 'gundelik'
+  const [aktifSekme, setAktifSekme] = useState('ozel'); // Her zaman "Çıkartmalarım" sekmesi ile başlar
   const [ozelCikartmalar, setOzelCikartmalar] = useState([]);
   const [islemSuruyor, setIslemSuruyor] = useState(false);
+  const [ilerlemeMetni, setIlerlemeMetni] = useState('');
 
-  // Özel çıkartmaları yükle
+  // Özel çıkartmaları yükle (en son kullanılan en üstte)
   const ozelYukle = useCallback(async () => {
     if (!kullanici) return;
     const liste = await ozelCikartmalariYukle(kullanici);
@@ -93,6 +96,7 @@ export default function CikartmaPaneli({
 
   useEffect(() => {
     if (visible) {
+      setAktifSekme('ozel'); // Panel her açıldığında mutlaka "Çıkartmalarım" sekmesinden açılsın
       ozelYukle();
     }
   }, [visible, ozelYukle]);
@@ -102,8 +106,10 @@ export default function CikartmaPaneli({
   // Fotoğraftan çıkartma yap
   async function handleFotoCikartma() {
     setIslemSuruyor(true);
+    setIlerlemeMetni('Fotoğraf işleniyor...');
     const sonuc = await fotograftanCikartmaYap(sunucuAdres, kullanici, sifre);
     setIslemSuruyor(false);
+    setIlerlemeMetni('');
     if (sonuc.tamam) {
       setOzelCikartmalar(sonuc.liste || []);
       setAktifSekme('ozel');
@@ -113,18 +119,38 @@ export default function CikartmaPaneli({
     }
   }
 
-  // WhatsApp çıkartması aktar (.webp)
+  // WhatsApp çıkartması veya ZIP arşivi aktar
   async function handleWhatsAppAktar() {
     setIslemSuruyor(true);
-    const sonuc = await whatsappCikartmasiAktar(sunucuAdres, kullanici, sifre);
+    setIlerlemeMetni('WhatsApp klasörü açılıyor...');
+    const sonuc = await whatsappCikartmasiAktar(sunucuAdres, kullanici, sifre, (ilerleme) => {
+      if (ilerleme && ilerleme.metin) {
+        setIlerlemeMetni(ilerleme.metin);
+      }
+    });
     setIslemSuruyor(false);
+    setIlerlemeMetni('');
     if (sonuc.tamam) {
       setOzelCikartmalar(sonuc.liste || []);
       setAktifSekme('ozel');
-      Alert.alert('Başarılı', 'WhatsApp çıkartması başarıyla aktarıldı.');
+      if (sonuc.adet && sonuc.adet > 1) {
+        Alert.alert('Harika!', `ZIP arşivinden ${sonuc.adet} adet çıkartma başarıyla çözüldü ve eklendi!`);
+      } else {
+        Alert.alert('Başarılı', 'WhatsApp çıkartması başarıyla aktarıldı.');
+      }
     } else if (sonuc.hata) {
-      Alert.alert('Hata', sonuc.hata);
+      Alert.alert('Bilgi', sonuc.hata);
     }
+  }
+
+  // Çıkartma seçildiğinde hem gönder hem de "Çıkartmalarım" listesinin en tepesine taşı
+  async function handleCikartmaSec(item) {
+    ozelCikartmaKullanildi(kullanici, item)
+      .then((guncel) => {
+        if (guncel && guncel.length) setOzelCikartmalar(guncel);
+      })
+      .catch(() => {});
+    onCikartmaSec(item);
   }
 
   // Özel çıkartma silme onayı
@@ -210,7 +236,7 @@ export default function CikartmaPaneli({
             disabled={islemSuruyor}
           >
             <Text style={[styles.aksiyonButonMetin, { color: renkler.basarili || '#2ea44f' }]}>
-              WP Çıkartması (.webp)
+              📁 WhatsApp (.webp / ZIP)
             </Text>
           </TouchableOpacity>
         </View>
@@ -219,7 +245,9 @@ export default function CikartmaPaneli({
       {islemSuruyor && (
         <View style={styles.yukleniyorKutu}>
           <ActivityIndicator size="small" color={renkler.vurgu || '#00a8ff'} />
-          <Text style={[styles.yukleniyorMetin, { color: renkler.metinSoluk }]}>Çıkartma hazırlanıyor...</Text>
+          <Text style={[styles.yukleniyorMetin, { color: renkler.metinSoluk }]}>
+            {ilerlemeMetni || 'Çıkartma hazırlanıyor...'}
+          </Text>
         </View>
       )}
 
@@ -228,7 +256,7 @@ export default function CikartmaPaneli({
         <View style={styles.bosKutu}>
           <Text style={[styles.bosBaslik, { color: renkler.metin }]}>Özel Çıkartmanız Yok</Text>
           <Text style={[styles.bosAciklama, { color: renkler.metinSoluk }]}>
-            Fotoğraflarınızdan çıkartma üretebilir veya sohbette başkalarının attığı çıkartmalara basılı tutup "Çıkartmalarıma Ekle" diyebilirsiniz.
+            Fotoğraflarınızdan veya WhatsApp'tan (.webp / ZIP) çıkartma aktarabilir, sohbette gelen çıkartmalara basılı tutup "Çıkartmalarıma Ekle" diyebilirsiniz.
           </Text>
         </View>
       ) : (
@@ -244,7 +272,7 @@ export default function CikartmaPaneli({
               <TouchableOpacity
                 style={styles.cikartmaKutu}
                 activeOpacity={0.7}
-                onPress={() => onCikartmaSec(item)}
+                onPress={() => handleCikartmaSec(item)}
                 onLongPress={() => aktifSekme === 'ozel' && handleOzelSil(item)}
                 delayLongPress={400}
               >

@@ -1473,21 +1473,6 @@ export default function SohbetEkrani({
                   </View>
                 </TouchableOpacity>
 
-                {/* Çıkartma (Sticker) ikonu - Emojisiz özel peeling sticker sembolü */}
-                <TouchableOpacity
-                  style={styles.ikonButon}
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    setCikartmaPaneliAcik((acik) => !acik);
-                  }}
-                  hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
-                >
-                  <CikartmaIkon
-                    renk={cikartmaPaneliAcik ? (renkler.vurgu || '#00a8ff') : (renkler.metinSoluk || '#8b949e')}
-                    aktif={cikartmaPaneliAcik}
-                  />
-                </TouchableOpacity>
-
                 <TextInput
                   style={styles.mesajGirdi}
                   placeholder="Mesaj yaz..."
@@ -1498,22 +1483,52 @@ export default function SohbetEkrani({
                   multiline
                 />
 
-                {/* Yazı varsa: Gönder | Yazı yoksa: Galeri + Mikrofon */}
+                {/* Yazı varsa: Çıkartma + Gönder | Yazı yoksa: Galeri + Çıkartma + Mikrofon */}
                 {metin.trim().length > 0 ? (
-                  <TouchableOpacity
-                    style={[styles.gonderButon, !baglandi && styles.gonderButonPasif]}
-                    onPress={gonder}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.gonderButonMetni}>↑</Text>
-                  </TouchableOpacity>
+                  <View style={styles.sagIkonlar}>
+                    <TouchableOpacity
+                      style={styles.ikonButon}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setCikartmaPaneliAcik((acik) => !acik);
+                      }}
+                      hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                    >
+                      <CikartmaIkon
+                        renk={cikartmaPaneliAcik ? (renkler.vurgu || '#00a8ff') : (renkler.metinSoluk || '#8b949e')}
+                        aktif={cikartmaPaneliAcik}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.gonderButon, !baglandi && styles.gonderButonPasif]}
+                      onPress={gonder}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.gonderButonMetni}>↑</Text>
+                    </TouchableOpacity>
+                  </View>
                 ) : (
                   <View style={styles.sagIkonlar}>
+                    {/* Galeri ikonu */}
                     <TouchableOpacity style={styles.ikonButon} onPress={medyaSecBaslat} hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}>
                       <View style={styles.galeriIkon}>
                         <View style={styles.galeriKare} />
                         <View style={styles.galeriKare2} />
                       </View>
+                    </TouchableOpacity>
+                    {/* Çıkartma ikonu - Galeri ikonunun hemen yanında */}
+                    <TouchableOpacity
+                      style={styles.ikonButon}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setCikartmaPaneliAcik((acik) => !acik);
+                      }}
+                      hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                    >
+                      <CikartmaIkon
+                        renk={cikartmaPaneliAcik ? (renkler.vurgu || '#00a8ff') : (renkler.metinSoluk || '#8b949e')}
+                        aktif={cikartmaPaneliAcik}
+                      />
                     </TouchableOpacity>
                     <View
                       {...kayitPanResponder.panHandlers}
