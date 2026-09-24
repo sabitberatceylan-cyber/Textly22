@@ -18,7 +18,7 @@ import { grupBilgiGetir } from './lib/api';
 import appConfig from './app.json';
 
 
-const MEVCUT_VERSIYON_KODU = Number(appConfig?.expo?.android?.versionCode) || 514;
+const MEVCUT_VERSIYON_KODU = Number(appConfig?.expo?.android?.versionCode) || 516;
 
 
 const SABIT_SUNUCU_URL = 'https://exzehub.com.tr';
@@ -94,14 +94,15 @@ function AnaIcerik() {
     } else if (anahtar.startsWith('grup:')) {
       const grupId = anahtar.replace('grup:', '');
       const bildirimBaslik = veri?.grupIsim || veri?.title || yanit?.notification?.request?.content?.title || 'Grup';
-      const bildirimResim = veri?.imageUrl || veri?.profilResimUrl || null;
+      // Grupta grup resmi yoksa ASLA gönderenin profil resmini grubun resmi gibi gösterme!
+      const bildirimGrupResim = veri?.grupResimUrl || null;
 
       // İlk olarak bildirimdeki bilgilerle hemen aç
       setAktifSohbet({
         hedefTuru: 'grup',
         hedef: grupId,
         baslik: bildirimBaslik,
-        resimUrl: bildirimResim,
+        resimUrl: bildirimGrupResim,
       });
       setEkran('sohbet');
 

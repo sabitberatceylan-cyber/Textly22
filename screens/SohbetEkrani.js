@@ -17,6 +17,7 @@ import {
   PanResponder,
   ScrollView,
   Dimensions,
+  AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Video, ResizeMode, Audio } from 'expo-av';
@@ -533,13 +534,15 @@ export default function SohbetEkrani({
     if (Array.isArray(yoneticiler) && yoneticiler.length > 0) return yoneticiler;
     return guncelYonetici ? [guncelYonetici] : [];
   }, [hedefTuru, grupCanli, yoneticiler, guncelYonetici]);
-  const guncelResimUrl = grupCanli?.resimUrl || yerelGrupResimUrl || resimUrl;
+  const guncelResimUrl = grupCanli !== undefined && grupCanli !== null
+    ? (grupCanli.resimUrl || null)
+    : (yerelGrupResimUrl || resimUrl || null);
 
   useEffect(() => {
-    if (grupCanli?.resimUrl) {
-      setYerelGrupResimUrl(grupCanli.resimUrl);
+    if (grupCanli) {
+      setYerelGrupResimUrl(grupCanli.resimUrl || null);
     }
-  }, [grupCanli?.resimUrl]);
+  }, [grupCanli?.resimUrl, grupCanli]);
 
   // Bildirimden veya doğrudan açılışta grup bilgileri eksikse sunucudan anında tazele
   useEffect(() => {
@@ -548,7 +551,7 @@ export default function SohbetEkrani({
         .then((res) => {
           if (res && res.tamam && res.grup) {
             setYerelGrupBilgi(res.grup);
-            if (res.grup.resimUrl) setYerelGrupResimUrl(res.grup.resimUrl);
+            setYerelGrupResimUrl(res.grup.resimUrl || null);
             if (grupBilgiGuncelleTekil) grupBilgiGuncelleTekil(res.grup);
           }
         })
@@ -561,7 +564,7 @@ export default function SohbetEkrani({
             const bul = res.liste.find((g) => String(g?.id) === String(hedef));
             if (bul) {
               setYerelGrupBilgi((eski) => ({ ...eski, ...bul }));
-              if (bul.resimUrl) setYerelGrupResimUrl(bul.resimUrl);
+              setYerelGrupResimUrl(bul.resimUrl || null);
             }
           }
         })
@@ -676,12 +679,26 @@ export default function SohbetEkrani({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anahtar]);
 
-  // Kisi veya grup mesajlari icin okundu bildirme
+  // Kisi veya grup mesajlari icin okundu bildirme (SADECE uygulama aktifken!)
   useEffect(() => {
+    if (AppState.currentState !== 'active') return;
     const okunmamislar = mesajlarHam
       .filter((m) => (m.gonderen || '').toLowerCase() !== (benimAdim || '').toLowerCase() && m.id && (hedefTuru === 'grup' ? !(m.okuyanlar || []).some(x => (x || '').toLowerCase() === (benimAdim || '').toLowerCase()) : m.durum !== 'gorundu'))
       .map((m) => m.id);
     if (okunmamislar.length) okunduBildir(okunmamislar);
+  }, [mesajlarHam, hedefTuru, benimAdim, okunduBildir]);
+
+  // Uygulama arka plandan öne geldiğinde açık sohbetteki okunmamış mesajları okundu bildir
+  useEffect(() => {
+    const abonelik = AppState.addEventListener('change', (durum) => {
+      if (durum === 'active') {
+        const okunmamislar = mesajlarHam
+          .filter((m) => (m.gonderen || '').toLowerCase() !== (benimAdim || '').toLowerCase() && m.id && (hedefTuru === 'grup' ? !(m.okuyanlar || []).some(x => (x || '').toLowerCase() === (benimAdim || '').toLowerCase()) : m.durum !== 'gorundu'))
+          .map((m) => m.id);
+        if (okunmamislar.length) okunduBildir(okunmamislar);
+      }
+    });
+    return () => abonelik.remove();
   }, [mesajlarHam, hedefTuru, benimAdim, okunduBildir]);
 
   useEffect(() => () => clearTimeout(yazmayiBiraktimZamanlayici.current), []);
@@ -1278,6 +1295,7 @@ export default function SohbetEkrani({
         <FlatList
           ref={listeRef}
           data={tersMesajlar}
+          extraData={tersMesajlar}
           inverted
           keyboardShouldPersistTaps="handled"
           maxToRenderPerBatch={15}
