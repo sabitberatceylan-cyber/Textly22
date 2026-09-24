@@ -122,7 +122,7 @@ export default function CikartmaPaneli({
   // WhatsApp çıkartması veya ZIP arşivi aktar
   async function handleWhatsAppAktar() {
     setIslemSuruyor(true);
-    setIlerlemeMetni('WhatsApp klasörü açılıyor...');
+    setIlerlemeMetni('Dosya yöneticisi açılıyor...');
     const sonuc = await whatsappCikartmasiAktar(sunucuAdres, kullanici, sifre, (ilerleme) => {
       if (ilerleme && ilerleme.metin) {
         setIlerlemeMetni(ilerleme.metin);
@@ -136,7 +136,7 @@ export default function CikartmaPaneli({
       if (sonuc.adet && sonuc.adet > 1) {
         Alert.alert('Harika!', `ZIP arşivinden ${sonuc.adet} adet çıkartma başarıyla çözüldü ve eklendi!`);
       } else {
-        Alert.alert('Başarılı', 'WhatsApp çıkartması başarıyla aktarıldı.');
+        Alert.alert('Başarılı', 'Çıkartma başarıyla aktarıldı.');
       }
     } else if (sonuc.hata) {
       Alert.alert('Bilgi', sonuc.hata);
@@ -236,7 +236,7 @@ export default function CikartmaPaneli({
             disabled={islemSuruyor}
           >
             <Text style={[styles.aksiyonButonMetin, { color: renkler.basarili || '#2ea44f' }]}>
-              📁 WhatsApp (.webp / ZIP)
+              📁 Dosya / ZIP (.webp)
             </Text>
           </TouchableOpacity>
         </View>
