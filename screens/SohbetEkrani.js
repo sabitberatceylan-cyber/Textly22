@@ -827,12 +827,29 @@ export default function SohbetEkrani({
 
   function medyaAc(m) {
     if (m.tekGorunum) {
-      if (m.tekGorunumGoruldu) {
-        Alert.alert('Görüntülendi', 'Bu fotoğraf tek görünümlük olduğu için tekrar açılamaz.');
-        return;
-      }
-      if ((m.gonderen || '').toLowerCase() !== (benimAdim || '').toLowerCase()) {
-        tekGorunumGorulduBildir(m.id);
+      const benKucuk = (benimAdim || '').toLowerCase();
+      const benGonderendim = (m.gonderen || '').toLowerCase() === benKucuk;
+
+      if (hedefTuru === 'grup') {
+        // Grup: tekGorunumGorenler array'inde bu kullanıcı varsa zaten açmış demektir
+        const gorenler = Array.isArray(m.tekGorunumGorenler) ? m.tekGorunumGorenler : [];
+        const benGordum = gorenler.some((u) => (u || '').toLowerCase() === benKucuk);
+        if (!benGonderendim && benGordum) {
+          Alert.alert('Görüntülendi', 'Bu medyayı zaten bir kez açtınız.');
+          return;
+        }
+        if (!benGonderendim && !benGordum) {
+          tekGorunumGorulduBildir(m.id);
+        }
+      } else {
+        // Kişisel sohbet: eski davranış
+        if (m.tekGorunumGoruldu) {
+          Alert.alert('Görüntülendi', 'Bu fotoğraf tek görünümlük olduğu için tekrar açılamaz.');
+          return;
+        }
+        if (!benGonderendim) {
+          tekGorunumGorulduBildir(m.id);
+        }
       }
     }
     setTamEkranMedya(m);
@@ -1106,11 +1123,16 @@ export default function SohbetEkrani({
 
 
   function alintiyaKaydir(mesajId) {
-    const idx = tersMesajlar.findIndex((m) => m.id === mesajId);
+    const idx = tersMesajlar.findIndex((m) => String(m.id) === String(mesajId));
     if (idx !== -1 && listeRef.current) {
       try {
         listeRef.current.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
-      } catch {}
+      } catch {
+        // scrollToIndex başarısız olursa offset hesapla
+        try {
+          listeRef.current.scrollToOffset({ offset: idx * 80, animated: true });
+        } catch {}
+      }
     }
     setVurgulananId(mesajId);
     setTimeout(() => setVurgulananId(null), 1800);
@@ -1244,7 +1266,7 @@ export default function SohbetEkrani({
         onTekliMenu={(m, layout) => setMesajMenu({ item: m, layout })}
         onMedyaAc={medyaAc}
         onAlintiTikla={alintiyaKaydir}
-        vurgulu={item.id === vurgulananId}
+        vurgulu={String(item.id) === String(vurgulananId)}
       />
     );
   }
@@ -1523,6 +1545,17 @@ export default function SohbetEkrani({
                 </Text>
               </TouchableOpacity>
             )}
+            {mesajMenu?.item && mesajMenu.item.gonderen === benimAdim && hedefTuru === 'kisi' && (
+              <TouchableOpacity
+                style={styles.aksiyonSatiri}
+                onPress={() => {
+                  setGorulduModal({ item: mesajMenu.item, tip: 'kisi' });
+                  setMesajMenu(null);
+                }}
+              >
+                <Text style={styles.aksiyonMetni}>Görüldü Bilgisi</Text>
+              </TouchableOpacity>
+            )}
             {mesajMenu?.item && mesajMenu.item.gonderen === benimAdim && (
               <TouchableOpacity
                 style={[styles.aksiyonSatiri, { borderBottomWidth: 0 }]}
@@ -1564,9 +1597,8 @@ export default function SohbetEkrani({
       {/* Kim Gördü? Modalı */}
       <Modal visible={!!gorulduModal} animationType="fade" transparent onRequestClose={() => setGorulduModal(null)}>
         <TouchableOpacity style={styles.modalArkaplan} activeOpacity={1} onPress={() => setGorulduModal(null)}>
-          <TouchableOpacity activeOpacity={1} style={[styles.modalKutu, { maxHeight: 460 }]}>
+          <TouchableOpacity activeOpacity={1} style={[styles.modalKutu, { maxHeight: 480 }]}>
             <Text style={[styles.modalBaslik, { marginBottom: 8 }]}>Görüldü Bilgisi</Text>
-
 
             {/* Mesaj Özeti */}
             {gorulduModal?.item?.metin ? (
@@ -1578,46 +1610,76 @@ export default function SohbetEkrani({
               </View>
             ) : null}
 
-            {/* Okuyanlar & Henüz Okumayanlar Listesi */}
-            {(() => {
-              const buMesaj = mesajlar.find((m) => m.id === gorulduModal?.item?.id) || gorulduModal?.item;
+            {/* Kişisel Sohbet Görüldü Bilgisi */}
+            {gorulduModal?.tip === 'kisi' ? (() => {
+              const buMesaj = mesajlar.find((m) => String(m.id) === String(gorulduModal?.item?.id)) || gorulduModal?.item;
+              const goruldu = buMesaj?.durum === 'gorundu' || buMesaj?.okundu === 1;
+              const gorulmeTarihi = buMesaj?.okunduZamani || null;
+              const tarihStr = gorulmeTarihi
+                ? new Date(gorulmeTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : null;
+              return (
+                <View style={{ width: '100%', paddingVertical: 8 }}>
+                  {goruldu ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4 }}>
+                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: renkler.vurgu || '#00a8ff', justifyContent: 'center', alignItems: 'center', marginRight: 10 }}>
+                        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>{(hedef || '?').slice(0, 1).toUpperCase()}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: renkler.metin, fontSize: 14, fontWeight: '500' }}>{hedef}</Text>
+                        {tarihStr && <Text style={{ color: renkler.metinSoluk, fontSize: 11, marginTop: 2 }}>{tarihStr}</Text>}
+                      </View>
+                      <Text style={{ color: renkler.basarili || '#32d74b', fontSize: 12, fontWeight: '600' }}>✓✓ Gördü</Text>
+                    </View>
+                  ) : (
+                    <Text style={{ color: renkler.metinSoluk, fontSize: 13, fontStyle: 'italic', paddingVertical: 8 }}>
+                      Henüz görülmedi.
+                    </Text>
+                  )}
+                </View>
+              );
+            })() : null}
+
+            {/* Grup Görüldü Bilgisi */}
+            {gorulduModal?.tip !== 'kisi' ? (() => {
+              const buMesaj = mesajlar.find((m) => String(m.id) === String(gorulduModal?.item?.id)) || gorulduModal?.item;
               const okuyanlar = buMesaj?.okuyanlar || [];
+              const okuyanZamanlar = buMesaj?.okuyanZamanlar || {};
               const okumayanlar = (guncelUyeler || []).filter(
                 (u) => (u || '').toLowerCase() !== (benimAdim || '').toLowerCase() &&
                        !okuyanlar.some((o) => (o || '').toLowerCase() === (u || '').toLowerCase())
               );
 
               return (
-                <ScrollView style={{ maxHeight: 260, width: '100%' }} showsVerticalScrollIndicator={false}>
+                <ScrollView style={{ maxHeight: 280, width: '100%' }} showsVerticalScrollIndicator={false}>
                   <Text style={{ color: renkler.metinSoluk, fontSize: 12, fontWeight: '700', marginBottom: 6, marginTop: 4 }}>
                     GÖRENLER ({okuyanlar.length})
                   </Text>
                   {okuyanlar.length > 0 ? (
-                    okuyanlar.map((kullaniciAdi, idx) => (
-                      <View
-                        key={`okuyan-${kullaniciAdi}-${idx}`}
-                        style={{
-                          flexDirection: 'row', alignItems: 'center',
-                          paddingVertical: 8, paddingHorizontal: 4,
-                          borderBottomWidth: idx < okuyanlar.length - 1 ? 0.5 : 0,
-                          borderBottomColor: renkler.cizgi,
-                        }}
-                      >
-                        <View style={{
-                          width: 32, height: 32, borderRadius: 16,
-                          backgroundColor: renkler.vurgu || '#00a8ff',
-                          justifyContent: 'center', alignItems: 'center', marginRight: 10
-                        }}>
-                          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>
-                            {(kullaniciAdi || '?').slice(0, 1).toUpperCase()}
-                          </Text>
+                    okuyanlar.map((kullaniciAdi, idx) => {
+                      const ts = okuyanZamanlar[kullaniciAdi];
+                      const tarihStr = ts ? new Date(ts).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
+                      return (
+                        <View
+                          key={`okuyan-${kullaniciAdi}-${idx}`}
+                          style={{
+                            flexDirection: 'row', alignItems: 'center',
+                            paddingVertical: 8, paddingHorizontal: 4,
+                            borderBottomWidth: idx < okuyanlar.length - 1 ? 0.5 : 0,
+                            borderBottomColor: renkler.cizgi,
+                          }}
+                        >
+                          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: renkler.vurgu || '#00a8ff', justifyContent: 'center', alignItems: 'center', marginRight: 10 }}>
+                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>{(kullaniciAdi || '?').slice(0, 1).toUpperCase()}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: renkler.metin, fontSize: 14, fontWeight: '500' }}>{kullaniciAdi}</Text>
+                            {tarihStr && <Text style={{ color: renkler.metinSoluk, fontSize: 11, marginTop: 1 }}>{tarihStr}</Text>}
+                          </View>
+                          <Text style={{ color: renkler.basarili || '#32d74b', fontSize: 12, fontWeight: '600' }}>✓✓ Gördü</Text>
                         </View>
-                        <Text style={{ color: renkler.metin, fontSize: 14, fontWeight: '500', flex: 1 }}>
-                          {kullaniciAdi}
-                        </Text>
-                        <Text style={{ color: renkler.basarili || '#32d74b', fontSize: 12, fontWeight: '600' }}>✓✓ Gördü</Text>
-                      </View>
-                    ))
+                      );
+                    })
                   ) : (
                     <Text style={{ color: renkler.metinSoluk, fontSize: 13, fontStyle: 'italic', paddingVertical: 8 }}>
                       Henüz kimse görmedi.
@@ -1632,25 +1694,14 @@ export default function SohbetEkrani({
                       {okumayanlar.map((kullaniciAdi, idx) => (
                         <View
                           key={`okumayan-${kullaniciAdi}-${idx}`}
-                          style={{
-                            flexDirection: 'row', alignItems: 'center',
-                            paddingVertical: 7, paddingHorizontal: 4,
-                            opacity: 0.7,
-                          }}
+                          style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, paddingHorizontal: 4, opacity: 0.7 }}
                         >
-                          <View style={{
-                            width: 28, height: 28, borderRadius: 14,
-                            backgroundColor: renkler.yuzey || '#333',
-                            borderWidth: 1, borderColor: renkler.cizgi,
-                            justifyContent: 'center', alignItems: 'center', marginRight: 10
-                          }}>
+                          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: renkler.yuzey || '#333', borderWidth: 1, borderColor: renkler.cizgi, justifyContent: 'center', alignItems: 'center', marginRight: 10 }}>
                             <Text style={{ color: renkler.metinSoluk, fontWeight: '600', fontSize: 12 }}>
                               {(kullaniciAdi || '?').slice(0, 1).toUpperCase()}
                             </Text>
                           </View>
-                          <Text style={{ color: renkler.metinSoluk, fontSize: 13, flex: 1 }}>
-                            {kullaniciAdi}
-                          </Text>
+                          <Text style={{ color: renkler.metinSoluk, fontSize: 13, flex: 1 }}>{kullaniciAdi}</Text>
                           <Text style={{ color: renkler.metinSoluk, fontSize: 11 }}>İletildi</Text>
                         </View>
                       ))}
@@ -1658,7 +1709,7 @@ export default function SohbetEkrani({
                   )}
                 </ScrollView>
               );
-            })()}
+            })() : null}
 
             <TouchableOpacity
               style={[styles.ikincilButon, { marginTop: 14 }]}
