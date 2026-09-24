@@ -18,8 +18,10 @@ import {
   ScrollView,
   Dimensions,
   AppState,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Video, ResizeMode, Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import { bosluk } from '../theme';
@@ -38,6 +40,8 @@ import { SOHBET_TEMALARI, sohbetTemasiniYukle, sohbetTemasiniKaydet } from '../l
 import MesajBalonu from '../components/MesajBalonu';
 import OzelKameraModal from '../components/OzelKameraModal';
 import OzelMedyaDuzenleyici from '../components/OzelMedyaDuzenleyici';
+import CikartmaPaneli, { CikartmaIkon } from '../components/CikartmaPaneli';
+import { ozelCikartmaKaydet } from '../lib/cikartmalar';
 
 const YAZIYOR_GONDERIM_ARALIGI = 2000;
 const YAZIYOR_DURDU_GECIKMESI = 2500;
@@ -495,6 +499,17 @@ export default function SohbetEkrani({
   const [grupKaydediliyor, setGrupKaydediliyor] = useState(false);
   const [grupGuncellemeDurumu, setGrupGuncellemeDurumu] = useState(null);
   const [gorulduModal, setGorulduModal] = useState(null); // { item, okuyanlar: [] }
+  const [cikartmaPaneliAcik, setCikartmaPaneliAcik] = useState(false);
+
+  // Gelen ve sohbetteki tüm çıkartmaları anında yerel hafızaya/diske indir (çevrimdışı ve gecikmesiz gösterim)
+  useEffect(() => {
+    (mesajlar || []).forEach((m) => {
+      if (m && m.medyaTuru === 'sticker' && m.medyaUrl) {
+        const tamUrl = m._tamMedyaUrl || medyaAdresi(sunucuAdres, kullanici, sifre, m.medyaUrl);
+        Image.prefetch(tamUrl).catch(() => {});
+      }
+    });
+  }, [mesajlar, sunucuAdres, kullanici, sifre]);
 
   const listeRef = useRef(null);
   const sonYaziyorGonderimi = useRef(0);
@@ -766,6 +781,32 @@ export default function SohbetEkrani({
     setYanitlanan(null);
     clearTimeout(yazmayiBiraktimZamanlayici.current);
     yazmayiBiraktimBildir(hedefTuru, hedef);
+  }
+
+  function cikartmaGonder(sticker) {
+    if (!sticker || !sticker.url) return;
+    let ozet = '🎨 Çıkartma';
+    if (yanitlanan) {
+      if (yanitlanan.metin) ozet = yanitlanan.metin;
+      else if (yanitlanan.medyaTuru === 'ses') ozet = '🎤 Ses kaydı';
+      else if (yanitlanan.medyaTuru === 'video') ozet = '🎥 Video';
+      else if (yanitlanan.medyaTuru === 'sticker') ozet = '🎨 Çıkartma';
+      else if (yanitlanan.medyaUrl) ozet = '📷 Fotoğraf';
+    }
+    const yanitPayload = yanitlanan
+      ? { id: yanitlanan.id, gonderen: yanitlanan.gonderen, metinOzet: ozet.slice(0, 120) }
+      : undefined;
+
+    const sonuc = mesajGonder(hedefTuru, hedef, '', yanitPayload, {
+      url: sticker.url,
+      tur: 'sticker',
+      tekGorunum: false,
+    });
+    if (!sonuc.basarili) {
+      if (sonuc.hata) Alert.alert('Gönderilemedi', sonuc.hata);
+      return;
+    }
+    setYanitlanan(null);
   }
 
   function mesajSilOnayla(id) {
@@ -1432,12 +1473,28 @@ export default function SohbetEkrani({
                   </View>
                 </TouchableOpacity>
 
+                {/* Çıkartma (Sticker) ikonu - Emojisiz özel peeling sticker sembolü */}
+                <TouchableOpacity
+                  style={styles.ikonButon}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setCikartmaPaneliAcik((acik) => !acik);
+                  }}
+                  hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                >
+                  <CikartmaIkon
+                    renk={cikartmaPaneliAcik ? (renkler.vurgu || '#00a8ff') : (renkler.metinSoluk || '#8b949e')}
+                    aktif={cikartmaPaneliAcik}
+                  />
+                </TouchableOpacity>
+
                 <TextInput
                   style={styles.mesajGirdi}
                   placeholder="Mesaj yaz..."
                   placeholderTextColor={renkler.metinSoluk}
                   value={metin}
                   onChangeText={metinDegisti}
+                  onFocus={() => setCikartmaPaneliAcik(false)}
                   multiline
                 />
 
@@ -1476,6 +1533,17 @@ export default function SohbetEkrani({
             )}
           </View>
         )}
+
+        {/* Çıkartma Paneli (WhatsApp tarzı alt çekmece) */}
+        <CikartmaPaneli
+          visible={cikartmaPaneliAcik}
+          onKapat={() => setCikartmaPaneliAcik(false)}
+          onCikartmaSec={cikartmaGonder}
+          sunucuAdres={sunucuAdres}
+          kullanici={kullanici}
+          sifre={sifre}
+          renkler={renkler}
+        />
       </KeyboardAvoidingView>
 
       <Modal visible={!!mesajMenu} animationType="fade" transparent onRequestClose={() => setMesajMenu(null)}>
@@ -1521,6 +1589,24 @@ export default function SohbetEkrani({
             >
               <Text style={styles.aksiyonMetni}>Yanıtla</Text>
             </TouchableOpacity>
+            {mesajMenu?.item?.medyaTuru === 'sticker' && !!mesajMenu.item.medyaUrl && (
+              <TouchableOpacity
+                style={styles.aksiyonSatiri}
+                onPress={async () => {
+                  const sUrl = mesajMenu.item.medyaUrl;
+                  setMesajMenu(null);
+                  await ozelCikartmaKaydet(kullanici, {
+                    isim: 'Kaydedilen Çıkartma',
+                    url: sUrl,
+                  });
+                  Alert.alert('Harika!', '✓ Çıkartma "Çıkartmalarım" listenize eklendi.');
+                }}
+              >
+                <Text style={[styles.aksiyonMetni, { color: renkler.vurgu || '#00a8ff', fontWeight: '700' }]}>
+                  ★ Çıkartmalarıma Ekle
+                </Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={styles.aksiyonSatiri}
               onPress={() => {

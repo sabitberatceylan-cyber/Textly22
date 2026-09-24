@@ -140,6 +140,8 @@ function MesajBalonu({
     outputRange: ['rgba(0, 168, 255, 0)', 'rgba(0, 168, 255, 0.9)'],
   });
 
+  const stickerMi = item.medyaTuru === 'sticker';
+
   return (
     <View style={[styles.balonSatir, benim ? styles.sagaYasli : styles.solaYasli, begeniSayisi > 0 && { marginBottom: 18 }]}>
       <Animated.View {...panResponder.panHandlers} style={{ maxWidth: '82%', transform: [{ translateX: pan }] }}>
@@ -148,10 +150,12 @@ function MesajBalonu({
             ref={balonRef}
             style={[
               styles.balon,
-              benim ? styles.kendiBalon : styles.digerBalon,
+              stickerMi
+                ? { backgroundColor: 'transparent', padding: 2, paddingHorizontal: 4, elevation: 0, shadowOpacity: 0, borderWidth: 0 }
+                : (benim ? styles.kendiBalon : styles.digerBalon),
               {
                 borderColor: vurguKenar,
-                borderWidth: 1.5,
+                borderWidth: stickerMi ? 0 : 1.5,
               },
             ]}
           >
@@ -190,13 +194,13 @@ function MesajBalonu({
               />
             )}
 
-            <View style={styles.altSatir}>
+            <View style={[styles.altSatir, stickerMi && { backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2, alignSelf: benim ? 'flex-end' : 'flex-start', marginTop: 2 }]}>
               {item.duzenlendi && !item.silindi && (
-                <Text style={[styles.duzenlendiEtiketi, benim && styles.saatKendi]}>düzenlendi · </Text>
+                <Text style={[styles.duzenlendiEtiketi, (benim || stickerMi) && styles.saatKendi]}>düzenlendi · </Text>
               )}
-              <Text style={[styles.saat, benim && styles.saatKendi]}>{saatFormatla(item.zaman)}</Text>
+              <Text style={[styles.saat, (benim || stickerMi) && styles.saatKendi]}>{saatFormatla(item.zaman)}</Text>
               {!!durumGostergesi && (
-                <Text style={[styles.durumYazi, benim && styles.saatKendi, item.durum === 'hata' && { color: renkler.hata }]}>
+                <Text style={[styles.durumYazi, (benim || stickerMi) && styles.saatKendi, item.durum === 'hata' && { color: renkler.hata }]}>
                   {durumGostergesi}
                 </Text>
               )}
@@ -469,6 +473,23 @@ function MedyaIcerik({ item, benim, styles, renkler, onMedyaAc }) {
           )}
         </View>
       </TouchableWithoutFeedback>
+    );
+  }
+
+  if (item.medyaTuru === 'sticker') {
+    return (
+      <View style={{ width: 145, height: 145, justifyContent: 'center', alignItems: 'center', marginVertical: 2 }}>
+        {yukleniyor && !hataVar && (
+          <ActivityIndicator style={{ position: 'absolute' }} color={renkler.metinSoluk} />
+        )}
+        <Image
+          source={{ uri: item._tamMedyaUrl }}
+          style={{ width: 140, height: 140 }}
+          resizeMode="contain"
+          onLoadEnd={() => setYukleniyor(false)}
+          onError={() => { setYukleniyor(false); setHataVar(true); }}
+        />
+      </View>
     );
   }
 

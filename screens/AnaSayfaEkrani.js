@@ -1012,6 +1012,7 @@ export default function AnaSayfaEkrani({
       if (gercekSonMesaj.tekGorunum) sonMesajMetin = `${onEk}📷 Tek seferlik fotoğraf`;
       else if (gercekSonMesaj.medyaTuru === 'video') sonMesajMetin = `${onEk}🎥 Video`;
       else if (gercekSonMesaj.medyaTuru === 'ses') sonMesajMetin = `${onEk}🎤 Ses mesajı`;
+      else if (gercekSonMesaj.medyaTuru === 'sticker') sonMesajMetin = `${onEk}🎨 Çıkartma`;
       else if (gercekSonMesaj.medyaTuru === 'foto') sonMesajMetin = `${onEk}📷 Fotoğraf`;
       else if (gercekSonMesaj.metin) sonMesajMetin = `${onEk}${gercekSonMesaj.metin}`;
     }
@@ -1130,6 +1131,7 @@ export default function AnaSayfaEkrani({
       if (gercekSonMesaj.tekGorunum) grupSonMesajMetin = `${onEk}📷 Tek seferlik fotoğraf`;
       else if (gercekSonMesaj.medyaTuru === 'video') grupSonMesajMetin = `${onEk}🎥 Video`;
       else if (gercekSonMesaj.medyaTuru === 'ses') grupSonMesajMetin = `${onEk}🎤 Ses mesajı`;
+      else if (gercekSonMesaj.medyaTuru === 'sticker') grupSonMesajMetin = `${onEk}🎨 Çıkartma`;
       else if (gercekSonMesaj.medyaTuru === 'foto') grupSonMesajMetin = `${onEk}📷 Fotoğraf`;
       else if (gercekSonMesaj.metin) grupSonMesajMetin = `${onEk}${gercekSonMesaj.metin}`;
     }
