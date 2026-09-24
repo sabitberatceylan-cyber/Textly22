@@ -89,7 +89,8 @@ function AnaIcerik() {
 
     if (anahtar.startsWith('kisi:')) {
       const kisiAdi = anahtar.replace('kisi:', '');
-      setAktifSohbet({ hedefTuru: 'kisi', hedef: kisiAdi, baslik: kisiAdi });
+      const bildirimResim = veri?.profilResimUrl || null;
+      setAktifSohbet({ hedefTuru: 'kisi', hedef: kisiAdi, baslik: kisiAdi, resimUrl: bildirimResim });
       setEkran('sohbet');
     } else if (anahtar.startsWith('grup:')) {
       const grupId = anahtar.replace('grup:', '');

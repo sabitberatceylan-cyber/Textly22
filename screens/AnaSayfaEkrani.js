@@ -312,6 +312,7 @@ export default function AnaSayfaEkrani({
   const [silinecekHikayeId, setSilinecekHikayeId] = useState(null);
   const [aktifVideoUri, setAktifVideoUri] = useState(null);
   const [videoYukleniyor, setVideoYukleniyor] = useState(false);
+  const [hikayeResimYukleniyor, setHikayeResimYukleniyor] = useState(false);
   const hikayeIlerleme = useRef(new Animated.Value(0)).current;
 
   // Profil Fotoğrafı Modalları
@@ -461,15 +462,31 @@ export default function AnaSayfaEkrani({
       if (h24 && h24.tamam && Array.isArray(h24.liste)) {
         const liste = h24.liste;
         setAktifHikayeler(liste);
+        // ÖN YÜKLEME: 24 saatlik tüm aktif hikayeleri (resim ve video) ve profil fotoğraflarını arka planda önden indir
         liste.forEach((h) => {
-          if (h && h.medyaTuru === 'video' && h.medyaUrl) {
+          if (h && h.medyaUrl) {
             const tamUrl = medyaAdresi(sunucuAdres, kullanici, sifre, h.medyaUrl);
-            videoOnbellekYoluAl(tamUrl);
+            if (h.medyaTuru === 'video') {
+              videoOnbellekYoluAl(tamUrl);
+            } else {
+              Image.prefetch(tamUrl).catch(() => {});
+            }
+          }
+          if (h && h.profilResimUrl) {
+            const pUrl = medyaAdresi(sunucuAdres, kullanici, sifre, h.profilResimUrl);
+            Image.prefetch(pUrl).catch(() => {});
           }
         });
       }
       if (h30 && h30.tamam && Array.isArray(h30.liste)) {
         setKesfetHikayeler(h30.liste);
+        // Keşfet hikayelerinin ilk 15 görselini de önden yükle
+        h30.liste.slice(0, 15).forEach((h) => {
+          if (h && h.medyaUrl && h.medyaTuru !== 'video') {
+            const tamUrl = medyaAdresi(sunucuAdres, kullanici, sifre, h.medyaUrl);
+            Image.prefetch(tamUrl).catch(() => {});
+          }
+        });
       }
     } catch (e) {
       console.warn('[hikayeleriYukle] Hata:', e);
@@ -619,12 +636,16 @@ export default function AnaSayfaEkrani({
         setAktifVideoUri(uzakUrl);
       });
 
-    // Sonraki hikaye de video ise onu da arka planda önden indir
+    // Sonraki hikayeyi de arka planda önden indir (resim veya video)
     if (aktifHikayeIndex < aktifHikayeListesi.length - 1) {
       const sonraki = aktifHikayeListesi[aktifHikayeIndex + 1];
-      if (sonraki && sonraki.medyaTuru === 'video') {
+      if (sonraki && sonraki.medyaUrl) {
         const sonrakiUrl = medyaAdresi(sunucuAdres, kullanici, sifre, sonraki.medyaUrl);
-        videoOnbellekYoluAl(sonrakiUrl);
+        if (sonraki.medyaTuru === 'video') {
+          videoOnbellekYoluAl(sonrakiUrl);
+        } else {
+          Image.prefetch(sonrakiUrl).catch(() => {});
+        }
       }
     }
   }, [seciliHikaye, aktifHikayeIndex, aktifHikayeListesi, sunucuAdres, kullanici, sifre, videoOnbellekYoluAl, videoOnbellekHaritasi]);
@@ -999,7 +1020,12 @@ export default function AnaSayfaEkrani({
       <TouchableOpacity
         style={styles.satir}
         activeOpacity={0.7}
-        onPress={() => onSohbetAc({ hedefTuru: 'kisi', hedef: item.kullanici, baslik: item.kullanici })}
+        onPress={() => onSohbetAc({
+          hedefTuru: 'kisi',
+          hedef: item.kullanici,
+          baslik: item.kullanici,
+          resimUrl: item.profilResimUrl || null,
+        })}
       >
         <TouchableOpacity
           style={styles.avatarKutu}
@@ -1843,7 +1869,15 @@ export default function AnaSayfaEkrani({
                     source={{ uri: medyaAdresi(sunucuAdres, kullanici, sifre, seciliHikaye.medyaUrl) }}
                     style={{ width: EKRAN_GENISLIK, height: EKRAN_YUKSEKLIK }}
                     resizeMode={seciliHikaye.sigdir ? 'contain' : 'cover'}
+                    onLoadStart={() => setHikayeResimYukleniyor(true)}
+                    onLoadEnd={() => setHikayeResimYukleniyor(false)}
+                    onError={() => setHikayeResimYukleniyor(false)}
                   />
+                  {hikayeResimYukleniyor && (
+                    <View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }]} pointerEvents="none">
+                      <ActivityIndicator size="large" color="#ffffff" />
+                    </View>
+                  )}
                 </View>
               )}
             </View>

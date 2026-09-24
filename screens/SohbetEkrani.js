@@ -472,7 +472,7 @@ export default function SohbetEkrani({
   const [mesajMenu, setMesajMenu] = useState(null);
   const [aksiyonYukleniyor, setAksiyonYukleniyor] = useState(false);
   const [yerelDigerDurum, setYerelDigerDurum] = useState(null);
-  const [digerProfilResmi, setDigerProfilResmi] = useState(null);
+  const [digerProfilResmi, setDigerProfilResmi] = useState(hedefTuru === 'kisi' ? (resimUrl || null) : null);
   const [sesKayitYapiliyor, setSesKayitYapiliyor] = useState(false);
   const [kayitKilitli, setKayitKilitli] = useState(false);
   const kayitKilitliRef = useRef(false);
@@ -590,6 +590,19 @@ export default function SohbetEkrani({
   // DM acildiginda karsidaki kisinin son gorulmesini ve profil fotosunu aninda cek
   useEffect(() => {
     if (hedefTuru === 'kisi') {
+      // Yerel önbellekten profil fotoğrafını anında çek (varsa hemen göster)
+      AsyncStorage.getItem(`@textly_kisiler_cache_${kullanici}`)
+        .then((raw) => {
+          if (raw) {
+            const list = JSON.parse(raw);
+            const bul = (list || []).find((k) => (k.kullanici || '').toLowerCase() === (hedef || '').toLowerCase());
+            if (bul && bul.profilResimUrl) {
+              setDigerProfilResmi((mevcut) => mevcut || bul.profilResimUrl);
+            }
+          }
+        })
+        .catch(() => {});
+
       kullanicilariGetir(sunucuAdres, kullanici, sifre).then((res) => {
         if (res.tamam) {
           const bul = (res.liste || []).find((k) => k.kullanici === hedef);
