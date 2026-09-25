@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  Switch, ScrollView, Alert, Image, ActivityIndicator, Modal,
+  Switch, ScrollView, Alert, Image, ActivityIndicator, Modal, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { bosluk } from '../theme';
@@ -272,6 +272,26 @@ export default function AyarlarEkrani({
           <Text style={styles.butonMetni}>Adresi Kaydet</Text>
         </TouchableOpacity>
 
+        {/* YÖNETİCİ PANELİ (Admin ve Yetkili Kullanıcılar İçin) */}
+        {(kullanici === 'Beratt' || kullanici === 'Exzex') && (
+          <View style={{ marginTop: bosluk.lg }}>
+            <Text style={styles.bolumBaslik}>YÖNETİCİ PANELİ</Text>
+            <TouchableOpacity
+              style={styles.adminButon}
+              onPress={() => {
+                const adminUrl = `${sunucuAdres.replace(/\/+$/, '')}/admin`;
+                Linking.openURL(adminUrl).catch(() => {
+                  Alert.alert('Hata', 'Yönetici paneli tarayıcıda açılamadı.');
+                });
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.adminButonMetni}>🛡️ Web Yönetici Panelini Aç</Text>
+              <Text style={styles.adminButonAltMetni}>Özel sohbetleri incele, bildirim gönder ve yönet</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <TouchableOpacity style={styles.cikisButon} onPress={() => setCikisOnayModalAcik(true)}>
           <Text style={styles.cikisButonMetni}>Çıkış yap</Text>
         </TouchableOpacity>
@@ -392,6 +412,26 @@ function olusturStiller(renkler) {
     butonMetni: { color: renkler.kendiBalonMetin, fontWeight: '700', fontSize: 15 },
     ikincilButon: { paddingVertical: 10, alignItems: 'center' },
     ikincilButonMetni: { color: renkler.metinSoluk, fontSize: 14 },
+
+    adminButon: {
+      backgroundColor: 'rgba(0, 168, 255, 0.12)',
+      borderWidth: 1,
+      borderColor: '#00a8ff',
+      borderRadius: 12,
+      padding: bosluk.md,
+      alignItems: 'center',
+    },
+    adminButonMetni: {
+      color: '#00a8ff',
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    adminButonAltMetni: {
+      color: renkler.metinSoluk,
+      fontSize: 12,
+      marginTop: 4,
+      textAlign: 'center',
+    },
 
     cikisButon: { marginTop: bosluk.xl, paddingVertical: 14, alignItems: 'center' },
     cikisButonMetni: { color: renkler.hata, fontSize: 15, fontWeight: '600' },
