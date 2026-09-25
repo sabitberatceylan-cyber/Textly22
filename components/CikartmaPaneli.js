@@ -300,8 +300,12 @@ export default function CikartmaPaneli({
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
             const tamUrl = item.url ? medyaAdresi(sunucuAdres, kullanici, sifre, item.url) : item.yerelUri;
-            const urlKucuk = (tamUrl || '').toLowerCase();
-            const videoMu = urlKucuk.endsWith('.mp4') || urlKucuk.endsWith('.webm') || item.tur === 'video';
+            const urlKucuk = (tamUrl || item.yerelUri || item.url || '').toLowerCase();
+            const videoMu = (
+              /\.(mp4|webm|mov)(\?|$)/i.test(urlKucuk) ||
+              item.tur === 'video' ||
+              (item.mimeTuru && item.mimeTuru.startsWith('video/'))
+            );
 
             return (
               <TouchableOpacity

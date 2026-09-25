@@ -64,6 +64,9 @@ jobs:
             }
           '
 
+      - name: Fresco Hareketli Cikartma (WebP & GIF) Yamasini Uygula
+        run: node scripts/patch-fresco.js
+
       - name: Release Keystore ve Imza Ayarlari
         run: |
           # Kalici keystore dosyasini kopyala (Her derlemede ayni imza)

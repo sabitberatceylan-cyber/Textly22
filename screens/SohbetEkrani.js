@@ -516,9 +516,11 @@ export default function SohbetEkrani({
   const yazmayiBiraktimZamanlayici = useRef(null);
 
   const scrollOffsetYRef = useRef(0);
-  const sonMesajAdediRef = useRef(0);
   const [asagiButonGoster, setAsagiButonGoster] = useState(false);
   const [yeniGelenSayisi, setYeniGelenSayisi] = useState(0);
+
+  const [kilitliSonZaman, setKilitliSonZaman] = useState(null);
+  const kilitliSonZamanRef = useRef(null);
 
   const ilkOkunmamisTespitEdildiRef = useRef(false);
   const [okunmamisBilgisi, setOkunmamisBilgisi] = useState(null);
@@ -531,9 +533,16 @@ export default function SohbetEkrani({
     return ham.filter((m) => (m.zaman || 0) > temizlemeZamani);
   }, [mesajDeposu, anahtar, temizlemeZamani]);
 
+  // Kullanici eski mesajlari okurken (yukari kaydirdiginda) son gorulen mesaji kilitle
+  // Boylece yeni gelen mesajlar ters listenin 0. indeksine eklenip ekrani asagi itmez, sabit kalir
+  const goruntulenenMesajlarHam = useMemo(() => {
+    if (!kilitliSonZaman) return mesajlarHam;
+    return mesajlarHam.filter((m) => (m.zaman || 0) <= kilitliSonZaman);
+  }, [mesajlarHam, kilitliSonZaman]);
+
   const mesajlar = useMemo(
-    () => mesajlarHam.map((m) => (m.medyaUrl ? { ...m, _tamMedyaUrl: medyaAdresi(sunucuAdres, kullanici, sifre, m.medyaUrl) } : m)),
-    [mesajlarHam, sunucuAdres, kullanici, sifre]
+    () => goruntulenenMesajlarHam.map((m) => (m.medyaUrl ? { ...m, _tamMedyaUrl: medyaAdresi(sunucuAdres, kullanici, sifre, m.medyaUrl) } : m)),
+    [goruntulenenMesajlarHam, sunucuAdres, kullanici, sifre]
   );
   const tersMesajlar = useMemo(() => [...mesajlar].reverse(), [mesajlar]);
 
@@ -544,6 +553,8 @@ export default function SohbetEkrani({
     setYeniGelenSayisi(0);
     setAsagiButonGoster(false);
     scrollOffsetYRef.current = 0;
+    kilitliSonZamanRef.current = null;
+    setKilitliSonZaman(null);
   }, [anahtar]);
 
   // Sohbete girildiginde son birakilan yeri (ilk okunmamis mesaji) tespit et ve oraya kaydir
@@ -560,7 +571,6 @@ export default function SohbetEkrani({
     );
 
     ilkOkunmamisTespitEdildiRef.current = true;
-    sonMesajAdediRef.current = mesajlarHam.length;
 
     if (okunmamislar.length > 0) {
       const ilkOkunmamis = okunmamislar[0];
@@ -580,40 +590,51 @@ export default function SohbetEkrani({
     }
   }, [mesajlarHam, benimAdim, hedefTuru]);
 
-  // Sohbet acikken kullanici yukaridaki eski mesajlari okurken yeni mesaj gelirse
+  // Sohbet yukaridayken yeni gelen mesajlarin sayisini gercek zaman damgasiyla hesapla
+  // Eski mesajlar yuklendiginde sayacin artmasini kesin olarak onler
   useEffect(() => {
-    if (!ilkOkunmamisTespitEdildiRef.current) return;
-    if (mesajlarHam.length > sonMesajAdediRef.current) {
-      const yeniSayisi = mesajlarHam.length - sonMesajAdediRef.current;
-      sonMesajAdediRef.current = mesajlarHam.length;
-
-      const enSonMesaj = mesajlarHam[mesajlarHam.length - 1];
-      const bendenDegil = enSonMesaj && (enSonMesaj.gonderen || '').toLowerCase() !== (benimAdim || '').toLowerCase();
-
-      if (bendenDegil && scrollOffsetYRef.current > 120) {
-        setYeniGelenSayisi((onceki) => onceki + yeniSayisi);
-        setAsagiButonGoster(true);
-      }
-    } else {
-      sonMesajAdediRef.current = mesajlarHam.length;
+    if (!kilitliSonZaman) {
+      setYeniGelenSayisi(0);
+      return;
     }
-  }, [mesajlarHam, benimAdim]);
+    const gelenler = mesajlarHam.filter(
+      (m) =>
+        (m.zaman || 0) > kilitliSonZaman &&
+        (m.gonderen || '').toLowerCase() !== (benimAdim || '').toLowerCase()
+    );
+    setYeniGelenSayisi(gelenler.length);
+    if (gelenler.length > 0) {
+      setAsagiButonGoster(true);
+    }
+  }, [mesajlarHam, kilitliSonZaman, benimAdim]);
 
   const onListScroll = useCallback((event) => {
     const y = event.nativeEvent.contentOffset.y;
     scrollOffsetYRef.current = y;
-    if (y > 150) {
+    if (y > 80) {
       setAsagiButonGoster(true);
+      if (!kilitliSonZamanRef.current && mesajlarHam.length > 0) {
+        const enSon = mesajlarHam[mesajlarHam.length - 1];
+        const kilitZamani = enSon ? (enSon.zaman || Date.now()) : Date.now();
+        kilitliSonZamanRef.current = kilitZamani;
+        setKilitliSonZaman(kilitZamani);
+      }
     } else if (y <= 40) {
       setAsagiButonGoster(false);
       setYeniGelenSayisi(0);
+      if (kilitliSonZamanRef.current !== null) {
+        kilitliSonZamanRef.current = null;
+        setKilitliSonZaman(null);
+      }
     }
-  }, []);
+  }, [mesajlarHam]);
 
   function enAsagiKaydir() {
-    listeRef.current?.scrollToOffset({ offset: 0, animated: true });
+    kilitliSonZamanRef.current = null;
+    setKilitliSonZaman(null);
     setYeniGelenSayisi(0);
     setAsagiButonGoster(false);
+    listeRef.current?.scrollToOffset({ offset: 0, animated: true });
   }
 
   const grupCanli = useMemo(() => {
@@ -868,6 +889,7 @@ export default function SohbetEkrani({
     setYanitlanan(null);
     clearTimeout(yazmayiBiraktimZamanlayici.current);
     yazmayiBiraktimBildir(hedefTuru, hedef);
+    enAsagiKaydir();
   }
 
   function cikartmaGonder(sticker) {
@@ -886,7 +908,8 @@ export default function SohbetEkrani({
 
     const sonuc = mesajGonder(hedefTuru, hedef, '', yanitPayload, {
       url: sticker.url,
-      tur: 'sticker',
+      tur: sticker.tur || 'sticker',
+      mimeTuru: sticker.mimeTuru,
       tekGorunum: false,
     });
     if (!sonuc.basarili) {
@@ -894,6 +917,7 @@ export default function SohbetEkrani({
       return;
     }
     setYanitlanan(null);
+    enAsagiKaydir();
   }
 
   function mesajSilOnayla(id) {
@@ -1393,7 +1417,15 @@ export default function SohbetEkrani({
 
   const medyaliMesajlar = mesajlar.filter((m) => m.medyaUrl && !m.tekGorunumGoruldu && !(m.tekGorunum && !m.tekGorunumGoruldu));
 
-  function mesajOgesi({ item }) {
+  const handleBegen = useCallback((m) => {
+    if (m && m.id) begeniDegistir(m.id);
+  }, [begeniDegistir]);
+
+  const handleTekliMenu = useCallback((m, layout) => {
+    setMesajMenu({ item: m, layout });
+  }, []);
+
+  const mesajOgesi = useCallback(({ item }) => {
     if (!item) return null;
     const ilkOkunmamisMi = Boolean(okunmamisBilgisi && item.id && String(item.id) === String(okunmamisBilgisi.ilkId));
 
@@ -1418,15 +1450,15 @@ export default function SohbetEkrani({
           renkler={renkler}
           styles={styles}
           onYanitla={setYanitlanan}
-          onBegen={(m) => begeniDegistir(m.id)}
-          onTekliMenu={(m, layout) => setMesajMenu({ item: m, layout })}
+          onBegen={handleBegen}
+          onTekliMenu={handleTekliMenu}
           onMedyaAc={medyaAc}
           onAlintiTikla={alintiyaKaydir}
           vurgulu={String(item.id) === String(vurgulananId)}
         />
       </View>
     );
-  }
+  }, [okunmamisBilgisi, benimAdim, hedefTuru, renkler, styles, setYanitlanan, handleBegen, handleTekliMenu, medyaAc, alintiyaKaydir, vurgulananId]);
 
   return (
     <View style={styles.kok}>
@@ -1481,7 +1513,6 @@ export default function SohbetEkrani({
         <FlatList
           ref={listeRef}
           data={tersMesajlar}
-          extraData={tersMesajlar}
           inverted
           keyboardShouldPersistTaps="handled"
           removeClippedSubviews={false}

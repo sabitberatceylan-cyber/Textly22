@@ -477,11 +477,9 @@ function MedyaIcerik({ item, benim, styles, renkler, onMedyaAc }) {
   }
 
   if (item.medyaTuru === 'sticker') {
-    const medyaUrlLower = (item.medyaUrl || item._tamMedyaUrl || '').toLowerCase();
+    const rawUrl = (item.medyaUrl || item._tamMedyaUrl || '').toLowerCase();
     const isVideoSticker = (
-      medyaUrlLower.endsWith('.mp4') ||
-      medyaUrlLower.endsWith('.webm') ||
-      medyaUrlLower.endsWith('.mov') ||
+      /\.(mp4|webm|mov)(\?|$)/i.test(rawUrl) ||
       item.tur === 'video' ||
       (item.mimeTuru && item.mimeTuru.startsWith('video/'))
     );
