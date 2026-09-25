@@ -311,11 +311,11 @@ export default function CikartmaPaneli({
                 onLongPress={() => aktifSekme === 'ozel' && handleOzelSil(item)}
                 delayLongPress={400}
               >
-                {videoMu ? (
+                {videoMu && tamUrl ? (
                   <Video
                     source={{ uri: tamUrl }}
                     style={styles.cikartmaResim}
-                    resizeMode={ResizeMode.CONTAIN}
+                    resizeMode={ResizeMode?.CONTAIN || 'contain'}
                     isLooping
                     shouldPlay
                     isMuted

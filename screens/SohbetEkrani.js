@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -574,16 +574,8 @@ export default function SohbetEkrani({
       const hedefIndex = tersDizi.findIndex((m) => m.id === ilkOkunmamis.id);
       if (hedefIndex > 0) {
         setTimeout(() => {
-          try {
-            listeRef.current?.scrollToIndex({
-              index: hedefIndex,
-              animated: true,
-              viewPosition: 0.6,
-            });
-          } catch {
-            listeRef.current?.scrollToOffset({ offset: hedefIndex * 70, animated: true });
-          }
-        }, 350);
+          listeRef.current?.scrollToOffset({ offset: hedefIndex * 70, animated: true });
+        }, 400);
       }
     }
   }, [mesajlarHam, benimAdim, hedefTuru]);
@@ -1402,7 +1394,8 @@ export default function SohbetEkrani({
   const medyaliMesajlar = mesajlar.filter((m) => m.medyaUrl && !m.tekGorunumGoruldu && !(m.tekGorunum && !m.tekGorunumGoruldu));
 
   function mesajOgesi({ item }) {
-    const ilkOkunmamisMi = okunmamisBilgisi && String(item.id) === String(okunmamisBilgisi.ilkId);
+    if (!item) return null;
+    const ilkOkunmamisMi = Boolean(okunmamisBilgisi && item.id && String(item.id) === String(okunmamisBilgisi.ilkId));
 
     return (
       <View>
@@ -1491,22 +1484,16 @@ export default function SohbetEkrani({
           extraData={tersMesajlar}
           inverted
           keyboardShouldPersistTaps="handled"
-          maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
           removeClippedSubviews={false}
           maxToRenderPerBatch={15}
           updateCellsBatchingPeriod={50}
           initialNumToRender={20}
           windowSize={10}
-          keyExtractor={(item) => String(item.id ?? item.gecici ?? item._tamMedyaUrl ?? Math.random())}
+          keyExtractor={(item) => String(item.id ?? item.gecici)}
           renderItem={mesajOgesi}
           contentContainerStyle={styles.mesajListesi}
           onScroll={onListScroll}
           scrollEventThrottle={16}
-          onScrollToIndexFailed={(info) => {
-            setTimeout(() => {
-              listeRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.6 });
-            }, 250);
-          }}
           onEndReached={eskileriYukle}
           onEndReachedThreshold={0.3}
           ListFooterComponent={

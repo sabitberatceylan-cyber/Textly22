@@ -491,11 +491,11 @@ function MedyaIcerik({ item, benim, styles, renkler, onMedyaAc }) {
         {yukleniyor && !hataVar && (
           <ActivityIndicator style={{ position: 'absolute' }} color={renkler.metinSoluk} />
         )}
-        {isVideoSticker ? (
+        {isVideoSticker && item._tamMedyaUrl ? (
           <Video
             source={{ uri: item._tamMedyaUrl }}
             style={{ width: 140, height: 140 }}
-            resizeMode={ResizeMode.CONTAIN}
+            resizeMode={ResizeMode?.CONTAIN || 'contain'}
             isLooping
             shouldPlay
             isMuted
