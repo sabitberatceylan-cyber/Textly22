@@ -4,6 +4,7 @@ import {
   Animated, PanResponder, Image, ActivityIndicator, Linking,
 } from 'react-native';
 import { Audio, Video, ResizeMode } from 'expo-av';
+import { Image as ExpoImage } from 'expo-image';
 import BaglantiliMetin from './BaglantiliMetin';
 
 const CIFT_TIK_ARALIGI = 280; // ms
@@ -197,13 +198,51 @@ function MesajBalonu({
               />
             )}
 
-            <View style={[styles.altSatir, stickerMi && { backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2, alignSelf: benim ? 'flex-end' : 'flex-start', marginTop: 2 }]}>
+            <View
+              style={[
+                styles.altSatir,
+                stickerMi && {
+                  backgroundColor: 'rgba(15, 20, 28, 0.75)',
+                  borderRadius: 12,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  alignSelf: benim ? 'flex-end' : 'flex-start',
+                  marginTop: 3,
+                  borderWidth: 0.5,
+                  borderColor: 'rgba(255, 255, 255, 0.18)',
+                },
+              ]}
+            >
               {item.duzenlendi && !item.silindi && (
-                <Text style={[styles.duzenlendiEtiketi, (benim || stickerMi) && styles.saatKendi]}>düzenlendi · </Text>
+                <Text
+                  style={[
+                    styles.duzenlendiEtiketi,
+                    stickerMi ? { color: 'rgba(255, 255, 255, 0.85)' } : (benim && styles.saatKendi),
+                  ]}
+                >
+                  düzenlendi ·{' '}
+                </Text>
               )}
-              <Text style={[styles.saat, (benim || stickerMi) && styles.saatKendi]}>{saatFormatla(item.zaman)}</Text>
+              <Text
+                style={[
+                  styles.saat,
+                  stickerMi ? { color: 'rgba(255, 255, 255, 0.9)' } : (benim && styles.saatKendi),
+                ]}
+              >
+                {saatFormatla(item.zaman)}
+              </Text>
               {!!durumGostergesi && (
-                <Text style={[styles.durumYazi, (benim || stickerMi) && styles.saatKendi, item.durum === 'hata' && { color: renkler.hata }]}>
+                <Text
+                  style={[
+                    styles.durumYazi,
+                    stickerMi
+                      ? (item.durum === 'gorundu'
+                          ? { color: '#38ef7d', fontWeight: '700' }
+                          : { color: 'rgba(255, 255, 255, 0.95)' })
+                      : (benim && styles.saatKendi),
+                    item.durum === 'hata' && { color: renkler.hata },
+                  ]}
+                >
                   {durumGostergesi}
                 </Text>
               )}
@@ -403,6 +442,7 @@ function SesOynatici({ item, styles, renkler }) {
 function MedyaIcerik({ item, benim, styles, renkler, onMedyaAc }) {
   const [yukleniyor, setYukleniyor] = useState(true);
   const [hataVar, setHataVar] = useState(false);
+  const [videoHata, setVideoHata] = useState(false);
 
   const stickerMi = item.medyaTuru === 'sticker' ||
     item.medyaTuru === 'webp' ||
@@ -499,7 +539,7 @@ function MedyaIcerik({ item, benim, styles, renkler, onMedyaAc }) {
         {yukleniyor && !hataVar && (
           <ActivityIndicator style={{ position: 'absolute' }} color={renkler.metinSoluk} />
         )}
-        {isVideoSticker && stickerUri ? (
+        {isVideoSticker && !videoHata && stickerUri ? (
           <Video
             source={{ uri: stickerUri }}
             style={{ width: 140, height: 140 }}
@@ -509,18 +549,40 @@ function MedyaIcerik({ item, benim, styles, renkler, onMedyaAc }) {
             isMuted
             useNativeControls={false}
             onLoadStart={() => setYukleniyor(true)}
-            onReadyForDisplay={() => setYukleniyor(false)}
-            onError={() => { setYukleniyor(false); setHataVar(true); }}
+            onReadyForDisplay={() => {
+              setYukleniyor(false);
+              setHataVar(false);
+            }}
+            onError={(e) => {
+              console.warn('[VideoSticker] Video hatası, ExpoImage deneniyor:', e);
+              setVideoHata(true);
+            }}
           />
         ) : stickerUri ? (
-          <Image
+          <ExpoImage
             source={{ uri: stickerUri }}
             style={{ width: 140, height: 140 }}
-            resizeMode="contain"
-            onLoadEnd={() => setYukleniyor(false)}
-            onError={() => { setYukleniyor(false); setHataVar(true); }}
+            contentFit="contain"
+            autoplay={true}
+            cachePolicy="memory-disk"
+            onLoadStart={() => setYukleniyor(true)}
+            onLoad={() => {
+              setYukleniyor(false);
+              setHataVar(false);
+            }}
+            onError={(e) => {
+              console.warn('[StickerImage] Görsel yükleme hatası:', e);
+              setYukleniyor(false);
+              setHataVar(true);
+            }}
           />
         ) : null}
+        {hataVar && (
+          <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 20 }}>⚠️</Text>
+            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>Yüklenemedi</Text>
+          </View>
+        )}
       </View>
     );
   }

@@ -11,6 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
+import { Image as ExpoImage } from 'expo-image';
 import {
   VARSAYILAN_PAKETLER,
   ozelCikartmalariYukle,
@@ -326,10 +327,12 @@ export default function CikartmaPaneli({
                     useNativeControls={false}
                   />
                 ) : (
-                  <Image
+                  <ExpoImage
                     source={{ uri: tamUrl }}
                     style={styles.cikartmaResim}
-                    resizeMode="contain"
+                    contentFit="contain"
+                    autoplay={true}
+                    cachePolicy="memory-disk"
                   />
                 )}
               </TouchableOpacity>
