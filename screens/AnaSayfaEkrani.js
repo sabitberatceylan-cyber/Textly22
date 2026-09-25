@@ -248,6 +248,7 @@ export default function AnaSayfaEkrani({
     baglandi,
     okunmamisSayilar,
     kullaniciDurumlari,
+    setKullaniciDurumlari,
     grupGuncellemeSayaci,
     sonMesajZamanlari,
     sonMesajlar,
@@ -999,11 +1000,13 @@ export default function AnaSayfaEkrani({
       : depoMesajlari;
     const sonDepoMesaji = gecerliDepoMesajlari.length > 0 ? gecerliDepoMesajlari[gecerliDepoMesajlari.length - 1] : null;
 
-    let hamSonMesaj = (sonMesajlar && sonMesajlar[anahtar]) || sonDepoMesaji || item.sonMesaj;
-    if (hamSonMesaj && (hamSonMesaj.zaman || 0) <= temizlemeZamani) {
-      hamSonMesaj = null;
-    }
-    const gercekSonMesaj = hamSonMesaj;
+    const adaylar = [
+      sonDepoMesaji,
+      sonMesajlar && sonMesajlar[anahtar],
+      item.sonMesaj,
+    ].filter((m) => m && (m.zaman || 0) > temizlemeZamani);
+    adaylar.sort((a, b) => (b.zaman || 0) - (a.zaman || 0));
+    const gercekSonMesaj = adaylar[0] || null;
 
     let sonMesajMetin = null;
     if (gercekSonMesaj) {
@@ -1119,11 +1122,13 @@ export default function AnaSayfaEkrani({
       : depoMesajlari;
     const sonDepoMesaji = gecerliDepoMesajlari.length > 0 ? gecerliDepoMesajlari[gecerliDepoMesajlari.length - 1] : null;
 
-    let hamSonMesaj = (sonMesajlar && sonMesajlar[anahtar]) || sonDepoMesaji || item.sonMesaj;
-    if (hamSonMesaj && (hamSonMesaj.zaman || 0) <= temizlemeZamani) {
-      hamSonMesaj = null;
-    }
-    const gercekSonMesaj = hamSonMesaj;
+    const adaylar = [
+      sonDepoMesaji,
+      sonMesajlar && sonMesajlar[anahtar],
+      item.sonMesaj,
+    ].filter((m) => m && (m.zaman || 0) > temizlemeZamani);
+    adaylar.sort((a, b) => (b.zaman || 0) - (a.zaman || 0));
+    const gercekSonMesaj = adaylar[0] || null;
 
     if (gercekSonMesaj) {
       const benMi = (gercekSonMesaj.gonderen || '').toLowerCase() === (kullanici || '').toLowerCase();

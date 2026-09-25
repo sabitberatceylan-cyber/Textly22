@@ -582,7 +582,7 @@ export default function SohbetEkrani({
       // tersMesajlar dizisinde bu mesajin indeksi
       const tersDizi = [...mesajlarHam].reverse();
       const hedefIndex = tersDizi.findIndex((m) => m.id === ilkOkunmamis.id);
-      if (hedefIndex > 0) {
+      if (hedefIndex > 1) {
         setTimeout(() => {
           listeRef.current?.scrollToOffset({ offset: hedefIndex * 70, animated: true });
         }, 400);
@@ -622,6 +622,7 @@ export default function SohbetEkrani({
     } else if (y <= 40) {
       setAsagiButonGoster(false);
       setYeniGelenSayisi(0);
+      setOkunmamisBilgisi(null);
       if (kilitliSonZamanRef.current !== null) {
         kilitliSonZamanRef.current = null;
         setKilitliSonZaman(null);
@@ -633,6 +634,7 @@ export default function SohbetEkrani({
     kilitliSonZamanRef.current = null;
     setKilitliSonZaman(null);
     setYeniGelenSayisi(0);
+    setOkunmamisBilgisi(null);
     setAsagiButonGoster(false);
     listeRef.current?.scrollToOffset({ offset: 0, animated: true });
   }
@@ -908,7 +910,8 @@ export default function SohbetEkrani({
 
     const sonuc = mesajGonder(hedefTuru, hedef, '', yanitPayload, {
       url: sticker.url,
-      tur: sticker.tur || 'sticker',
+      tur: 'sticker',
+      stickerTuru: sticker.tur,
       mimeTuru: sticker.mimeTuru,
       tekGorunum: false,
     });

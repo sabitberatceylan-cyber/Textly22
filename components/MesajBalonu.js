@@ -140,7 +140,10 @@ function MesajBalonu({
     outputRange: ['rgba(0, 168, 255, 0)', 'rgba(0, 168, 255, 0.9)'],
   });
 
-  const stickerMi = item.medyaTuru === 'sticker';
+  const stickerMi = item.medyaTuru === 'sticker' ||
+    item.medyaTuru === 'webp' ||
+    item.medyaTuru === 'gif' ||
+    Boolean(item.medyaUrl && /\.(webp|gif)$/i.test((item.medyaUrl || '').split('?')[0]));
 
   return (
     <View style={[styles.balonSatir, benim ? styles.sagaYasli : styles.solaYasli, begeniSayisi > 0 && { marginBottom: 18 }]}>
@@ -401,6 +404,11 @@ function MedyaIcerik({ item, benim, styles, renkler, onMedyaAc }) {
   const [yukleniyor, setYukleniyor] = useState(true);
   const [hataVar, setHataVar] = useState(false);
 
+  const stickerMi = item.medyaTuru === 'sticker' ||
+    item.medyaTuru === 'webp' ||
+    item.medyaTuru === 'gif' ||
+    Boolean(item.medyaUrl && /\.(webp|gif)$/i.test((item.medyaUrl || '').split('?')[0]));
+
   if (item.tekGorunum && item.tekGorunumGoruldu) {
     return (
       <View style={styles.tekGorunumBadge}>
@@ -476,22 +484,24 @@ function MedyaIcerik({ item, benim, styles, renkler, onMedyaAc }) {
     );
   }
 
-  if (item.medyaTuru === 'sticker') {
+  if (stickerMi) {
     const rawUrl = (item.medyaUrl || item._tamMedyaUrl || '').toLowerCase();
     const isVideoSticker = (
       /\.(mp4|webm|mov)(\?|$)/i.test(rawUrl) ||
       item.tur === 'video' ||
+      item.stickerTuru === 'video' ||
       (item.mimeTuru && item.mimeTuru.startsWith('video/'))
     );
+    const stickerUri = item._tamMedyaUrl || item.medyaUrl;
 
     return (
       <View style={{ width: 145, height: 145, justifyContent: 'center', alignItems: 'center', marginVertical: 2 }}>
         {yukleniyor && !hataVar && (
           <ActivityIndicator style={{ position: 'absolute' }} color={renkler.metinSoluk} />
         )}
-        {isVideoSticker && item._tamMedyaUrl ? (
+        {isVideoSticker && stickerUri ? (
           <Video
-            source={{ uri: item._tamMedyaUrl }}
+            source={{ uri: stickerUri }}
             style={{ width: 140, height: 140 }}
             resizeMode={ResizeMode?.CONTAIN || 'contain'}
             isLooping
@@ -502,15 +512,15 @@ function MedyaIcerik({ item, benim, styles, renkler, onMedyaAc }) {
             onReadyForDisplay={() => setYukleniyor(false)}
             onError={() => { setYukleniyor(false); setHataVar(true); }}
           />
-        ) : (
+        ) : stickerUri ? (
           <Image
-            source={{ uri: item._tamMedyaUrl }}
+            source={{ uri: stickerUri }}
             style={{ width: 140, height: 140 }}
             resizeMode="contain"
             onLoadEnd={() => setYukleniyor(false)}
             onError={() => { setYukleniyor(false); setHataVar(true); }}
           />
-        )}
+        ) : null}
       </View>
     );
   }
