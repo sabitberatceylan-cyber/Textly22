@@ -10,6 +10,7 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
+import { Video, ResizeMode } from 'expo-av';
 import {
   VARSAYILAN_PAKETLER,
   ozelCikartmalariYukle,
@@ -298,7 +299,10 @@ export default function CikartmaPaneli({
           contentContainerStyle={styles.gridKonteyner}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const tamUrl = item.yerelUri || medyaAdresi(sunucuAdres, kullanici, sifre, item.url);
+            const tamUrl = item.url ? medyaAdresi(sunucuAdres, kullanici, sifre, item.url) : item.yerelUri;
+            const urlKucuk = (tamUrl || '').toLowerCase();
+            const videoMu = urlKucuk.endsWith('.mp4') || urlKucuk.endsWith('.webm') || item.tur === 'video';
+
             return (
               <TouchableOpacity
                 style={styles.cikartmaKutu}
@@ -307,11 +311,23 @@ export default function CikartmaPaneli({
                 onLongPress={() => aktifSekme === 'ozel' && handleOzelSil(item)}
                 delayLongPress={400}
               >
-                <Image
-                  source={{ uri: tamUrl }}
-                  style={styles.cikartmaResim}
-                  resizeMode="contain"
-                />
+                {videoMu ? (
+                  <Video
+                    source={{ uri: tamUrl }}
+                    style={styles.cikartmaResim}
+                    resizeMode={ResizeMode.CONTAIN}
+                    isLooping
+                    shouldPlay
+                    isMuted
+                    useNativeControls={false}
+                  />
+                ) : (
+                  <Image
+                    source={{ uri: tamUrl }}
+                    style={styles.cikartmaResim}
+                    resizeMode="contain"
+                  />
+                )}
               </TouchableOpacity>
             );
           }}

@@ -1,6 +1,6 @@
 {
   "name": "textly",
-  "version": "5.3.0",
+  "version": "5.3.2",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",

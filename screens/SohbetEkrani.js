@@ -515,6 +515,14 @@ export default function SohbetEkrani({
   const sonYaziyorGonderimi = useRef(0);
   const yazmayiBiraktimZamanlayici = useRef(null);
 
+  const scrollOffsetYRef = useRef(0);
+  const sonMesajAdediRef = useRef(0);
+  const [asagiButonGoster, setAsagiButonGoster] = useState(false);
+  const [yeniGelenSayisi, setYeniGelenSayisi] = useState(0);
+
+  const ilkOkunmamisTespitEdildiRef = useRef(false);
+  const [okunmamisBilgisi, setOkunmamisBilgisi] = useState(null);
+
   const anahtar = hedefTuru === 'grup' ? grupAnahtari(hedef) : kisiAnahtari(hedef);
   const temizlemeZamani = sohbetTemizlemeZamanlari?.[anahtar] || 0;
   const mesajlarHam = useMemo(() => {
@@ -528,6 +536,93 @@ export default function SohbetEkrani({
     [mesajlarHam, sunucuAdres, kullanici, sifre]
   );
   const tersMesajlar = useMemo(() => [...mesajlar].reverse(), [mesajlar]);
+
+  // Sohbet degistiginde okunmamis durumunu ve sayaclari sifirla
+  useEffect(() => {
+    ilkOkunmamisTespitEdildiRef.current = false;
+    setOkunmamisBilgisi(null);
+    setYeniGelenSayisi(0);
+    setAsagiButonGoster(false);
+    scrollOffsetYRef.current = 0;
+  }, [anahtar]);
+
+  // Sohbete girildiginde son birakilan yeri (ilk okunmamis mesaji) tespit et ve oraya kaydir
+  useEffect(() => {
+    if (ilkOkunmamisTespitEdildiRef.current || !mesajlarHam.length) return;
+
+    const okunmamislar = mesajlarHam.filter(
+      (m) =>
+        (m.gonderen || '').toLowerCase() !== (benimAdim || '').toLowerCase() &&
+        m.id &&
+        (hedefTuru === 'grup'
+          ? !(m.okuyanlar || []).some((x) => (x || '').toLowerCase() === (benimAdim || '').toLowerCase())
+          : m.durum !== 'gorundu')
+    );
+
+    ilkOkunmamisTespitEdildiRef.current = true;
+    sonMesajAdediRef.current = mesajlarHam.length;
+
+    if (okunmamislar.length > 0) {
+      const ilkOkunmamis = okunmamislar[0];
+      setOkunmamisBilgisi({
+        ilkId: ilkOkunmamis.id,
+        adet: okunmamislar.length,
+      });
+
+      // tersMesajlar dizisinde bu mesajin indeksi
+      const tersDizi = [...mesajlarHam].reverse();
+      const hedefIndex = tersDizi.findIndex((m) => m.id === ilkOkunmamis.id);
+      if (hedefIndex > 0) {
+        setTimeout(() => {
+          try {
+            listeRef.current?.scrollToIndex({
+              index: hedefIndex,
+              animated: true,
+              viewPosition: 0.6,
+            });
+          } catch {
+            listeRef.current?.scrollToOffset({ offset: hedefIndex * 70, animated: true });
+          }
+        }, 350);
+      }
+    }
+  }, [mesajlarHam, benimAdim, hedefTuru]);
+
+  // Sohbet acikken kullanici yukaridaki eski mesajlari okurken yeni mesaj gelirse
+  useEffect(() => {
+    if (!ilkOkunmamisTespitEdildiRef.current) return;
+    if (mesajlarHam.length > sonMesajAdediRef.current) {
+      const yeniSayisi = mesajlarHam.length - sonMesajAdediRef.current;
+      sonMesajAdediRef.current = mesajlarHam.length;
+
+      const enSonMesaj = mesajlarHam[mesajlarHam.length - 1];
+      const bendenDegil = enSonMesaj && (enSonMesaj.gonderen || '').toLowerCase() !== (benimAdim || '').toLowerCase();
+
+      if (bendenDegil && scrollOffsetYRef.current > 120) {
+        setYeniGelenSayisi((onceki) => onceki + yeniSayisi);
+        setAsagiButonGoster(true);
+      }
+    } else {
+      sonMesajAdediRef.current = mesajlarHam.length;
+    }
+  }, [mesajlarHam, benimAdim]);
+
+  const onListScroll = useCallback((event) => {
+    const y = event.nativeEvent.contentOffset.y;
+    scrollOffsetYRef.current = y;
+    if (y > 150) {
+      setAsagiButonGoster(true);
+    } else if (y <= 40) {
+      setAsagiButonGoster(false);
+      setYeniGelenSayisi(0);
+    }
+  }, []);
+
+  function enAsagiKaydir() {
+    listeRef.current?.scrollToOffset({ offset: 0, animated: true });
+    setYeniGelenSayisi(0);
+    setAsagiButonGoster(false);
+  }
 
   const grupCanli = useMemo(() => {
     if (hedefTuru !== 'grup') return null;
@@ -1307,21 +1402,36 @@ export default function SohbetEkrani({
   const medyaliMesajlar = mesajlar.filter((m) => m.medyaUrl && !m.tekGorunumGoruldu && !(m.tekGorunum && !m.tekGorunumGoruldu));
 
   function mesajOgesi({ item }) {
+    const ilkOkunmamisMi = okunmamisBilgisi && String(item.id) === String(okunmamisBilgisi.ilkId);
+
     return (
-      <MesajBalonu
-        item={item}
-        benim={(item.gonderen || '').toLowerCase() === (benimAdim || '').toLowerCase()}
-        hedefTuru={hedefTuru}
-        benimAdim={benimAdim}
-        renkler={renkler}
-        styles={styles}
-        onYanitla={setYanitlanan}
-        onBegen={(m) => begeniDegistir(m.id)}
-        onTekliMenu={(m, layout) => setMesajMenu({ item: m, layout })}
-        onMedyaAc={medyaAc}
-        onAlintiTikla={alintiyaKaydir}
-        vurgulu={String(item.id) === String(vurgulananId)}
-      />
+      <View>
+        {ilkOkunmamisMi && (
+          <View style={styles.okunmamisBolucuKutu}>
+            <View style={styles.okunmamisCizgi} />
+            <View style={styles.okunmamisRozet}>
+              <Text style={styles.okunmamisRozetMetin}>
+                ── Okunmamış Mesajlar ({okunmamisBilgisi.adet} yeni mesaj) ──
+              </Text>
+            </View>
+            <View style={styles.okunmamisCizgi} />
+          </View>
+        )}
+        <MesajBalonu
+          item={item}
+          benim={(item.gonderen || '').toLowerCase() === (benimAdim || '').toLowerCase()}
+          hedefTuru={hedefTuru}
+          benimAdim={benimAdim}
+          renkler={renkler}
+          styles={styles}
+          onYanitla={setYanitlanan}
+          onBegen={(m) => begeniDegistir(m.id)}
+          onTekliMenu={(m, layout) => setMesajMenu({ item: m, layout })}
+          onMedyaAc={medyaAc}
+          onAlintiTikla={alintiyaKaydir}
+          vurgulu={String(item.id) === String(vurgulananId)}
+        />
+      </View>
     );
   }
 
@@ -1381,14 +1491,22 @@ export default function SohbetEkrani({
           extraData={tersMesajlar}
           inverted
           keyboardShouldPersistTaps="handled"
+          maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
+          removeClippedSubviews={false}
           maxToRenderPerBatch={15}
           updateCellsBatchingPeriod={50}
           initialNumToRender={20}
           windowSize={10}
-          removeClippedSubviews={Platform.OS === 'android'}
-          keyExtractor={(item) => String(item.id ?? item.gecici)}
+          keyExtractor={(item) => String(item.id ?? item.gecici ?? item._tamMedyaUrl ?? Math.random())}
           renderItem={mesajOgesi}
           contentContainerStyle={styles.mesajListesi}
+          onScroll={onListScroll}
+          scrollEventThrottle={16}
+          onScrollToIndexFailed={(info) => {
+            setTimeout(() => {
+              listeRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.6 });
+            }, 250);
+          }}
           onEndReached={eskileriYukle}
           onEndReachedThreshold={0.3}
           ListFooterComponent={
@@ -1399,6 +1517,23 @@ export default function SohbetEkrani({
             ) : null
           }
         />
+
+        {asagiButonGoster && (
+          <TouchableOpacity
+            style={styles.asagiKaydirButon}
+            activeOpacity={0.8}
+            onPress={enAsagiKaydir}
+          >
+            <Text style={styles.asagiKaydirIkon}>↓</Text>
+            {yeniGelenSayisi > 0 && (
+              <View style={styles.yeniMesajRozet}>
+                <Text style={styles.yeniMesajRozetMetin}>
+                  {yeniGelenSayisi > 99 ? '99+' : yeniGelenSayisi}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
 
         {digerYaziyorMu && (
           <View style={styles.yaziyorSatiri}>
@@ -1483,30 +1618,15 @@ export default function SohbetEkrani({
                   multiline
                 />
 
-                {/* Yazı varsa: Çıkartma + Gönder | Yazı yoksa: Galeri + Çıkartma + Mikrofon */}
+                {/* Yazı varsa: Sadece Gönder Butonu | Yazı yoksa: Galeri + Çıkartma + Mikrofon */}
                 {metin.trim().length > 0 ? (
-                  <View style={styles.sagIkonlar}>
-                    <TouchableOpacity
-                      style={styles.ikonButon}
-                      onPress={() => {
-                        Keyboard.dismiss();
-                        setCikartmaPaneliAcik((acik) => !acik);
-                      }}
-                      hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
-                    >
-                      <CikartmaIkon
-                        renk={cikartmaPaneliAcik ? (renkler.vurgu || '#00a8ff') : (renkler.metinSoluk || '#8b949e')}
-                        aktif={cikartmaPaneliAcik}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.gonderButon, !baglandi && styles.gonderButonPasif]}
-                      onPress={gonder}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.gonderButonMetni}>↑</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <TouchableOpacity
+                    style={[styles.gonderButon, !baglandi && styles.gonderButonPasif]}
+                    onPress={gonder}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.gonderButonMetni}>↑</Text>
+                  </TouchableOpacity>
                 ) : (
                   <View style={styles.sagIkonlar}>
                     {/* Galeri ikonu */}
@@ -2545,11 +2665,82 @@ function olusturStiller(renkler) {
       borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, maxHeight: 120, marginHorizontal: bosluk.xs,
     },
     gonderButon: {
-      width: 38, height: 38, borderRadius: 19, backgroundColor: renkler.kendiBalon,
+      width: 48, height: 38, borderRadius: 19, backgroundColor: renkler.kendiBalon,
       justifyContent: 'center', alignItems: 'center',
     },
     gonderButonPasif: { opacity: 0.4 },
     gonderButonMetni: { color: renkler.kendiBalonMetin, fontWeight: '700', fontSize: 18 },
+
+    asagiKaydirButon: {
+      position: 'absolute',
+      right: 16,
+      bottom: 80,
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: renkler.yuzey || '#1c2128',
+      borderWidth: 1,
+      borderColor: renkler.cizgi || 'rgba(255,255,255,0.15)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 99,
+      elevation: 6,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.35,
+      shadowRadius: 5,
+    },
+    asagiKaydirIkon: {
+      color: renkler.metin,
+      fontSize: 20,
+      fontWeight: 'bold',
+      marginTop: -2,
+    },
+    yeniMesajRozet: {
+      position: 'absolute',
+      top: -6,
+      right: -4,
+      backgroundColor: renkler.vurgu || '#00a8ff',
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
+      paddingHorizontal: 4,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1.5,
+      borderColor: renkler.arkaplan || '#0d1117',
+    },
+    yeniMesajRozetMetin: {
+      color: '#ffffff',
+      fontSize: 10.5,
+      fontWeight: 'bold',
+    },
+
+    okunmamisBolucuKutu: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 12,
+      paddingHorizontal: 12,
+    },
+    okunmamisCizgi: {
+      flex: 1,
+      height: 1,
+      backgroundColor: (renkler.vurgu || '#00a8ff') + '55',
+    },
+    okunmamisRozet: {
+      backgroundColor: (renkler.vurgu || '#00a8ff') + '22',
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      borderWidth: 1,
+      borderColor: (renkler.vurgu || '#00a8ff') + '44',
+      marginHorizontal: 8,
+    },
+    okunmamisRozetMetin: {
+      color: renkler.vurgu || '#00a8ff',
+      fontSize: 11.5,
+      fontWeight: '600',
+    },
 
     engellendiBar: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

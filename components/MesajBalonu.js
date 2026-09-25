@@ -3,7 +3,7 @@ import {
   View, Text, TouchableWithoutFeedback, TouchableOpacity,
   Animated, PanResponder, Image, ActivityIndicator, Linking,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import BaglantiliMetin from './BaglantiliMetin';
 
 const CIFT_TIK_ARALIGI = 280; // ms
@@ -477,18 +477,42 @@ function MedyaIcerik({ item, benim, styles, renkler, onMedyaAc }) {
   }
 
   if (item.medyaTuru === 'sticker') {
+    const medyaUrlLower = (item.medyaUrl || item._tamMedyaUrl || '').toLowerCase();
+    const isVideoSticker = (
+      medyaUrlLower.endsWith('.mp4') ||
+      medyaUrlLower.endsWith('.webm') ||
+      medyaUrlLower.endsWith('.mov') ||
+      item.tur === 'video' ||
+      (item.mimeTuru && item.mimeTuru.startsWith('video/'))
+    );
+
     return (
       <View style={{ width: 145, height: 145, justifyContent: 'center', alignItems: 'center', marginVertical: 2 }}>
         {yukleniyor && !hataVar && (
           <ActivityIndicator style={{ position: 'absolute' }} color={renkler.metinSoluk} />
         )}
-        <Image
-          source={{ uri: item._tamMedyaUrl }}
-          style={{ width: 140, height: 140 }}
-          resizeMode="contain"
-          onLoadEnd={() => setYukleniyor(false)}
-          onError={() => { setYukleniyor(false); setHataVar(true); }}
-        />
+        {isVideoSticker ? (
+          <Video
+            source={{ uri: item._tamMedyaUrl }}
+            style={{ width: 140, height: 140 }}
+            resizeMode={ResizeMode.CONTAIN}
+            isLooping
+            shouldPlay
+            isMuted
+            useNativeControls={false}
+            onLoadStart={() => setYukleniyor(true)}
+            onReadyForDisplay={() => setYukleniyor(false)}
+            onError={() => { setYukleniyor(false); setHataVar(true); }}
+          />
+        ) : (
+          <Image
+            source={{ uri: item._tamMedyaUrl }}
+            style={{ width: 140, height: 140 }}
+            resizeMode="contain"
+            onLoadEnd={() => setYukleniyor(false)}
+            onError={() => { setYukleniyor(false); setHataVar(true); }}
+          />
+        )}
       </View>
     );
   }
