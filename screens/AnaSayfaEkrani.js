@@ -1954,7 +1954,7 @@ export default function AnaSayfaEkrani({
                 onPress={async () => {
                   setGoruntuleyenlerModalAcik(true);
                   try {
-                    const hedefSunucu = sunucuAdres || 'https://exzehub.com.tr';
+                    const hedefSunucu = sunucuAdres || 'https://textly.exzehub.com.tr';
                     const h24 = await hikayeleriGetir(hedefSunucu, kullanici, sifre, 'aktif');
                     if (h24?.tamam && Array.isArray(h24?.liste)) {
                       const guncel = h24.liste.find((h) => h.id === seciliHikaye?.id);
@@ -1980,7 +1980,7 @@ export default function AnaSayfaEkrani({
                     setAktifHikayeler((prevList) =>
                       prevList.map((h) => (h.id === seciliHikaye.id ? { ...h, begenildi: yeniDurum } : h))
                     );
-                    await hikayeBegen(sunucuAdres || 'https://exzehub.com.tr', kullanici, sifre, seciliHikaye.id);
+                    await hikayeBegen(sunucuAdres || 'https://textly.exzehub.com.tr', kullanici, sifre, seciliHikaye.id);
                   }}
                 >
                   <Text style={{ fontSize: 30, color: seciliHikaye.begenildi ? '#ff453a' : 'rgba(255,255,255,0.9)' }}>
@@ -2023,7 +2023,7 @@ export default function AnaSayfaEkrani({
                           const bulunanKisi = kList.find((k) => (k?.kullanici || '').toLowerCase() === viewerKadi.toLowerCase());
                           const viewerFoto = (typeof item === 'object' && item?.profilResimUrl) || bulunanKisi?.profilResimUrl || null;
                           let fotoTamUrl = null;
-                          const hedefSunucu = sunucuAdres || 'https://exzehub.com.tr';
+                          const hedefSunucu = sunucuAdres || 'https://textly.exzehub.com.tr';
                           if (viewerFoto && hedefSunucu) {
                             try { fotoTamUrl = medyaAdresi(hedefSunucu, kullanici, sifre, viewerFoto); } catch {}
                           }

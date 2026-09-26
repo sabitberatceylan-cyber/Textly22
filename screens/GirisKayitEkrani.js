@@ -16,7 +16,7 @@ import { useTema } from '../lib/temaBaglami';
 import { kayitOl, girisYap } from '../lib/api';
 import OzelTarihSeciciModal from '../components/OzelTarihSeciciModal';
 
-const SABIT_SUNUCU = 'https://exzehub.com.tr';
+const SABIT_SUNUCU = 'https://textly.exzehub.com.tr';
 
 export default function GirisKayitEkrani({ onGiris }) {
   const { renkler } = useTema();

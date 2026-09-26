@@ -21,7 +21,7 @@ import appConfig from './app.json';
 const MEVCUT_VERSIYON_KODU = Number(appConfig?.expo?.android?.versionCode) || 516;
 
 
-const SABIT_SUNUCU_URL = 'https://exzehub.com.tr';
+const SABIT_SUNUCU_URL = 'https://textly.exzehub.com.tr';
 
 function SoketGuncellemeDinleyici({ onYeniGuncelleme }) {
   const { guncellemeHaberi, guncellemeHaberiTemizle } = useSoket();
