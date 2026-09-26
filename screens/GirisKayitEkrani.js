@@ -71,7 +71,7 @@ export default function GirisKayitEkrani({ onGiris }) {
       <KeyboardAvoidingView style={styles.kok} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={styles.icerik} keyboardShouldPersistTaps="handled">
           <Text style={styles.baslik}>Textly</Text>
-          <Text style={styles.altBaslik}>Özgür ve modern mesajlaşma</Text>
+          <Text style={styles.altBaslik}>Deneysel mesajlaşma uygulaması</Text>
 
           <View style={styles.sekmeler}>
             <TouchableOpacity
@@ -139,11 +139,6 @@ export default function GirisKayitEkrani({ onGiris }) {
               <Text style={styles.butonMetni}>{kayitModu ? 'Kayıt Ol' : 'Giriş Yap'}</Text>
             )}
           </TouchableOpacity>
-
-          <Text style={styles.ipucu}>
-            Sunucu adresi Cloudflare Tunnel'ı her başlattığında değişir.
-            Değiştiğinde buraya yeni adresi yapıştırman yeterli.
-          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
 
