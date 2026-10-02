@@ -186,7 +186,7 @@ function MesajBalonu({
             {item.silindi ? (
               <Text style={styles.silinmisMetin}>Bu mesaj silindi</Text>
             ) : item.medyaUrl ? (
-              <MedyaIcerik item={item} benim={benim} styles={styles} renkler={renkler} onMedyaAc={onMedyaAc} />
+              <MedyaIcerik item={item} benim={benim} benimAdim={benimAdim} hedefTuru={hedefTuru} styles={styles} renkler={renkler} onMedyaAc={onMedyaAc} />
             ) : null}
 
             {!item.silindi && !!item.metin && (
@@ -439,7 +439,7 @@ function SesOynatici({ item, styles, renkler }) {
   );
 }
 
-function MedyaIcerik({ item, benim, styles, renkler, onMedyaAc }) {
+function MedyaIcerik({ item, benim, benimAdim, hedefTuru, styles, renkler, onMedyaAc }) {
   const [yukleniyor, setYukleniyor] = useState(true);
   const [hataVar, setHataVar] = useState(false);
   const [videoHata, setVideoHata] = useState(false);
@@ -448,14 +448,6 @@ function MedyaIcerik({ item, benim, styles, renkler, onMedyaAc }) {
     item.medyaTuru === 'webp' ||
     item.medyaTuru === 'gif' ||
     Boolean(item.medyaUrl && /\.(webp|gif)$/i.test((item.medyaUrl || '').split('?')[0]));
-
-  if (item.tekGorunum && item.tekGorunumGoruldu) {
-    return (
-      <View style={styles.tekGorunumBadge}>
-        <Text style={styles.tekGorunumBadgeMetni}>Görüntülendi</Text>
-      </View>
-    );
-  }
 
   if (item.tekGorunum) {
     if (benim) {
@@ -467,6 +459,22 @@ function MedyaIcerik({ item, benim, styles, renkler, onMedyaAc }) {
         </View>
       );
     }
+
+    const isGrup = hedefTuru === 'grup' || item.hedefTuru === 'grup';
+    const benKucuk = (benimAdim || '').trim().toLowerCase();
+    const gorenler = Array.isArray(item.tekGorunumGorenler) ? item.tekGorunumGorenler : [];
+    const benGordum = isGrup
+      ? gorenler.some((u) => (u || '').trim().toLowerCase() === benKucuk)
+      : (item.tekGorunumGoruldu || gorenler.some((u) => (u || '').trim().toLowerCase() === benKucuk));
+
+    if (benGordum) {
+      return (
+        <View style={styles.tekGorunumBadge}>
+          <Text style={styles.tekGorunumBadgeMetni}>Görüntülendi</Text>
+        </View>
+      );
+    }
+
     return (
       <TouchableWithoutFeedback onPress={() => onMedyaAc(item)}>
         <View style={styles.tekGorunumBadge}>

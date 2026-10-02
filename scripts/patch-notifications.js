@@ -74,7 +74,7 @@ try {
 
 // ==========================================
 // 2. ExpoNotificationBuilder.kt Güncellemesi
-// Bildirim LargeIcon'unu dairesel (Snapchat/WhatsApp stili avatar) yap
+// Bildirim solundaki LargeIcon'u dairesel (Snapchat stili) yap
 // ==========================================
 try {
   let builderContent = fs.readFileSync(builderFile, 'utf8');
@@ -122,7 +122,7 @@ try {
 
   if (builderModified) {
     fs.writeFileSync(builderFile, builderContent, 'utf8');
-    console.log('[patch-notifications] ExpoNotificationBuilder.kt basariyla dairesel avatar ile yamalandi.');
+    console.log('[patch-notifications] ExpoNotificationBuilder.kt basariyla yamalandi.');
   } else {
     console.log('[patch-notifications] ExpoNotificationBuilder.kt zaten guncel.');
   }

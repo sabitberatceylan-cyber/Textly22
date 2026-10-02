@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Video, ResizeMode, Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 import * as Clipboard from 'expo-clipboard';
 import { bosluk } from '../theme';
 import { useTema } from '../lib/temaBaglami';
@@ -1028,6 +1029,67 @@ export default function SohbetEkrani({
       tekGorunumGorulduBildir(tamEkranMedya.id);
     }
     setTamEkranMedya(null);
+  }
+
+  async function tamEkranFotografiIndir() {
+    if (!tamEkranMedya || !tamEkranMedya._tamMedyaUrl) return;
+    if (tamEkranMedya.tekGorunum) {
+      Alert.alert('Uyarı', 'Tek gösterimlik medyalar indirilemez.');
+      return;
+    }
+
+    try {
+      const url = tamEkranMedya._tamMedyaUrl;
+      const dosyaAdi = url.split('/').pop().split('?')[0] || `textly_${Date.now()}.jpg`;
+      const uzanti = dosyaAdi.split('.').pop().toLowerCase() || 'jpg';
+      const yerelHedef = `${FileSystem.cacheDirectory}textly_download_${Date.now()}.${uzanti}`;
+
+      const indirSonuc = await FileSystem.downloadAsync(url, yerelHedef);
+      if (!indirSonuc || !indirSonuc.uri) {
+        Alert.alert('Hata', 'Fotoğraf indirilemedi.');
+        return;
+      }
+
+      let galeriyeKaydedildi = false;
+      try {
+        const MediaLib = require('expo-media-library');
+        if (MediaLib && MediaLib.requestPermissionsAsync && MediaLib.saveToLibraryAsync) {
+          const izin = await MediaLib.requestPermissionsAsync();
+          if (izin.granted) {
+            await MediaLib.saveToLibraryAsync(indirSonuc.uri);
+            galeriyeKaydedildi = true;
+            Alert.alert('✅ Başarılı', 'Fotoğraf telefonunuzun galerisine kaydedildi!');
+            return;
+          }
+        }
+      } catch (errMedia) {}
+
+      if (!galeriyeKaydedildi && FileSystem.StorageAccessFramework) {
+        try {
+          const safIzin = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+          if (safIzin && safIzin.granted) {
+            const base64 = await FileSystem.readAsStringAsync(indirSonuc.uri, { encoding: FileSystem.EncodingType.Base64 });
+            const mimeTuru = uzanti === 'png' ? 'image/png' : uzanti === 'mp4' ? 'video/mp4' : 'image/jpeg';
+            const olusturulanUri = await FileSystem.StorageAccessFramework.createFileAsync(
+              safIzin.directoryUri,
+              dosyaAdi,
+              mimeTuru
+            );
+            await FileSystem.writeAsStringAsync(olusturulanUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+            galeriyeKaydedildi = true;
+            Alert.alert('✅ Başarılı', 'Fotoğraf seçtiğiniz klasöre başarıyla kaydedildi!');
+            return;
+          }
+        } catch (safHata) {}
+      }
+
+      if (!galeriyeKaydedildi) {
+        Alert.alert('İndirildi', 'Fotoğraf cihazınıza kaydedildi.');
+      }
+    } catch (e) {
+      console.warn('Fotoğraf indirme hatası:', e);
+      Alert.alert('Hata', 'Fotoğraf kaydedilemedi: ' + (e.message || ''));
+    }
   }
 
   async function medyaGonderDuzenlenmis({ secim, yaziKatmani, baslik, tekGorunum }) {
@@ -2393,9 +2455,26 @@ export default function SohbetEkrani({
           </View>
         ) : (
           <View style={styles.tamEkranArkaplan}>
-            <TouchableOpacity style={[styles.tamEkranKapat, { top: insets.top + 12 }]} onPress={tamEkranKapat}>
-              <Text style={styles.tamEkranKapatMetni}>✕</Text>
-            </TouchableOpacity>
+            <View style={[styles.tamEkranUstSag, { top: insets.top + 12, right: 16 }]}>
+              {!tamEkranMedya?.tekGorunum && (
+                <TouchableOpacity
+                  style={styles.tamEkranIndirButon}
+                  onPress={tamEkranFotografiIndir}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text style={styles.tamEkranIndirIkon}>⬇️</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.tamEkranKapat}
+                onPress={tamEkranKapat}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.tamEkranKapatMetni}>✕</Text>
+              </TouchableOpacity>
+            </View>
             <Image source={{ uri: tamEkranMedya?._tamMedyaUrl }} style={styles.tamEkranResim} resizeMode="contain" />
             {tamEkranMedya?.yaziKatmani && tamEkranMedya.yaziKatmani.metin && (
               <View
@@ -2866,8 +2945,35 @@ function olusturStiller(renkler) {
     galeriVideoKutu: { justifyContent: 'center', alignItems: 'center' },
 
     tamEkranArkaplan: { flex: 1, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center' },
-    tamEkranKapat: { position: 'absolute', right: 16, zIndex: 10, padding: 8 },
-    tamEkranKapatMetni: { color: '#ffffff', fontSize: 24 },
+    tamEkranUstSag: {
+      position: 'absolute',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      zIndex: 20,
+    },
+    tamEkranIndirButon: {
+      backgroundColor: 'rgba(255, 255, 255, 0.22)',
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.35)',
+    },
+    tamEkranIndirIkon: { fontSize: 20, color: '#ffffff' },
+    tamEkranKapat: {
+      backgroundColor: 'rgba(0, 0, 0, 0.45)',
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.25)',
+    },
+    tamEkranKapatMetni: { color: '#ffffff', fontSize: 22, fontWeight: '700' },
     tamEkranResim: { width: '100%', height: '100%', resizeMode: 'contain' },
     tamEkranVideo: { width: '100%', height: '100%' },
 
