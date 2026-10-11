@@ -42,6 +42,7 @@ import MesajBalonu from '../components/MesajBalonu';
 import OzelKameraModal from '../components/OzelKameraModal';
 import OzelMedyaDuzenleyici from '../components/OzelMedyaDuzenleyici';
 import CikartmaPaneli, { CikartmaIkon } from '../components/CikartmaPaneli';
+import AnketOlusturModal from '../components/AnketOlusturModal';
 import { ozelCikartmaKaydet } from '../lib/cikartmalar';
 
 const YAZIYOR_GONDERIM_ARALIGI = 2000;
@@ -437,10 +438,11 @@ export default function SohbetEkrani({
     begeniDegistir, mesajDuzenle, mesajSil, gecmisiIcinYukle, aktifSohbetAyarla, benimAdim,
     tekGorunumGorulduBildir, temaDegistirBildir, temaHaberleri, sonIslemHatasi, sohbetiGizle,
     grupGuncelle, gruplar, gruplariAyarla, grupBilgiGuncelleTekil, sohbetiTemizle, sohbetTemizlemeZamanlari, grupSil,
+    tepkiVer, sabitlenenMesajlar, mesajSabitle, mesajSabitleKaldir, sabitlenenMesajAyarla, anketOyVer, aramaBaslat,
   } = useSoket();
 
-
   const insets = useSafeAreaInsets();
+  const [anketModalAcik, setAnketModalAcik] = useState(false);
 
   const [metin, setMetin] = useState('');
   const [yanitlanan, setYanitlanan] = useState(null);
@@ -818,6 +820,9 @@ export default function SohbetEkrani({
       const sonuc = await gecmisGetir(sunucuAdres, kullanici, sifre, hedefTuru, hedef);
       if (!iptal && sonuc.tamam) {
         gecmisiIcinYukle(anahtar, sonuc.liste);
+        if (sonuc.sabitlenenMesajId !== undefined) {
+          sabitlenenMesajAyarla(anahtar, sonuc.sabitlenenMesajId);
+        }
         if (sonuc.liste.length < 50) setDahaEskisiVarMi(false);
       }
     })();
@@ -1516,6 +1521,8 @@ export default function SohbetEkrani({
           styles={styles}
           onYanitla={setYanitlanan}
           onBegen={handleBegen}
+          onTepki={(m, emoji) => tepkiVer(m.id, emoji)}
+          onAnketOyVer={anketOyVer}
           onTekliMenu={handleTekliMenu}
           onMedyaAc={medyaAc}
           onAlintiTikla={alintiyaKaydir}
@@ -1523,7 +1530,25 @@ export default function SohbetEkrani({
         />
       </View>
     );
-  }, [okunmamisBilgisi, benimAdim, hedefTuru, renkler, styles, setYanitlanan, handleBegen, handleTekliMenu, medyaAc, alintiyaKaydir, vurgulananId]);
+  }, [okunmamisBilgisi, benimAdim, hedefTuru, renkler, styles, setYanitlanan, handleBegen, tepkiVer, anketOyVer, handleTekliMenu, medyaAc, alintiyaKaydir, vurgulananId]);
+
+  const sabitlenenId = Number(sabitlenenMesajlar?.[anahtar]);
+  const sabitlenenMesaj = useMemo(() => {
+    if (!sabitlenenId) return null;
+    return (mesajlar || []).find((m) => Number(m.id) === sabitlenenId) || null;
+  }, [sabitlenenId, mesajlar]);
+
+  const sabitlenenMesajaGit = useCallback(() => {
+    if (!sabitlenenId) return;
+    const idx = tersMesajlar.findIndex((m) => Number(m.id) === sabitlenenId);
+    if (idx !== -1 && listeRef.current) {
+      listeRef.current.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
+      setVurgulananId(sabitlenenId);
+      setTimeout(() => setVurgulananId(null), 2000);
+    } else {
+      Alert.alert('Sabitlenmiş Mesaj', 'Mesaj daha eski mesajlar arasında veya henüz yüklenmedi.');
+    }
+  }, [sabitlenenId, tersMesajlar]);
 
   return (
     <View style={styles.kok}>
@@ -1568,10 +1593,51 @@ export default function SohbetEkrani({
           </TouchableOpacity>
 
         </View>
-        <TouchableOpacity onPress={() => setMenuModalAcik(true)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Text style={styles.menuIkon}>⋮</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={() => aramaBaslat(hedefTuru, hedef, 'ses')}
+            hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+            style={styles.headerAramaButon}
+          >
+            <Text style={styles.headerAramaIkon}>📞</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setMenuModalAcik(true)} hitSlop={{ top: 12, bottom: 12, left: 8, right: 12 }}>
+            <Text style={styles.menuIkon}>⋮</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Sabitlenmiş Mesaj Bannerı */}
+      {!!(sabitlenenMesaj || (sabitlenenId && sabitlenenId > 0)) && (
+        <View style={styles.sabitlenenBar}>
+          <TouchableOpacity
+            style={styles.sabitlenenIcerik}
+            activeOpacity={0.7}
+            onPress={sabitlenenMesajaGit}
+          >
+            <Text style={styles.sabitlenenIkon}>📌</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sabitlenenBaslik} numberOfLines={1}>
+                Sabitlenmiş Mesaj {sabitlenenMesaj?.gonderen ? `• ${sabitlenenMesaj.gonderen}` : ''}
+              </Text>
+              <Text style={styles.sabitlenenMetin} numberOfLines={1}>
+                {sabitlenenMesaj?.metin
+                  || (sabitlenenMesaj?.anket ? `📊 ${sabitlenenMesaj.anket.soru}` : null)
+                  || (sabitlenenMesaj?.medyaTuru === 'ses' ? '🎤 Ses kaydı' : null)
+                  || (sabitlenenMesaj?.medyaTuru === 'video' ? '🎥 Video' : null)
+                  || (sabitlenenMesaj?.medyaTuru ? '📷 Medya' : 'Mesaja gitmek için dokunun')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.sabitlenenKapat}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => mesajSabitleKaldir(hedefTuru, hedef)}
+          >
+            <Text style={styles.sabitlenenKapatMetin}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <KeyboardAvoidingView style={styles.icerikAlani} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <TemaDeseni temaId={ozelTema?.id} />
@@ -1787,6 +1853,24 @@ export default function SohbetEkrani({
                 : { alignSelf: 'center', bottom: insets.bottom + 80 },
             ]}
           >
+            {/* Hızlı Emoji Tepki Çubuğu */}
+            <View style={styles.hizliTepkiBari}>
+              {['❤️', '😂', '🔥', '👍', '😮', '😢', '👏'].map((emoji) => (
+                <TouchableOpacity
+                  key={emoji}
+                  style={styles.hizliTepkiButon}
+                  onPress={() => {
+                    const id = mesajMenu?.item?.id;
+                    setMesajMenu(null);
+                    if (id) tepkiVer(id, emoji);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.hizliTepkiEmoji}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             {!!mesajMenu?.item?.metin && (
               <TouchableOpacity
                 style={styles.aksiyonSatiri}
@@ -1807,6 +1891,29 @@ export default function SohbetEkrani({
             >
               <Text style={styles.aksiyonMetni}>Yanıtla</Text>
             </TouchableOpacity>
+
+            {/* Sabitle / Sabitlemeyi Kaldır */}
+            {mesajMenu?.item && !mesajMenu.item.silindi && (
+              <TouchableOpacity
+                style={styles.aksiyonSatiri}
+                onPress={() => {
+                  const mId = Number(mesajMenu.item.id);
+                  const suankiSabitli = Number(sabitlenenMesajlar?.[anahtar]);
+                  setMesajMenu(null);
+                  if (suankiSabitli === mId) {
+                    mesajSabitleKaldir(hedefTuru, hedef);
+                  } else {
+                    mesajSabitle(hedefTuru, hedef, mId);
+                  }
+                }}
+              >
+                <Text style={styles.aksiyonMetni}>
+                  {Number(sabitlenenMesajlar?.[anahtar]) === Number(mesajMenu.item.id)
+                    ? '📌 Sabitlemeyi Kaldır'
+                    : '📌 Mesajı Sabitle'}
+                </Text>
+              </TouchableOpacity>
+            )}
             {mesajMenu?.item?.medyaTuru === 'sticker' && !!mesajMenu.item.medyaUrl && (
               <TouchableOpacity
                 style={styles.aksiyonSatiri}
@@ -2049,6 +2156,9 @@ export default function SohbetEkrani({
             )}
             <TouchableOpacity style={styles.aksiyonSatiri} onPress={() => { setMenuModalAcik(false); setTemaModalAcik(true); }}>
               <Text style={styles.aksiyonMetni}>Tema Değiştir</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.aksiyonSatiri} onPress={() => { setMenuModalAcik(false); setAnketModalAcik(true); }}>
+              <Text style={styles.aksiyonMetni}>📊 Anket Oluştur</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.aksiyonSatiri} onPress={sessizeAlToggle}>
               <Text style={styles.aksiyonMetni}>{sessizMi ? 'Sesi Aç' : 'Sessize Al'}</Text>
@@ -2618,6 +2728,17 @@ export default function SohbetEkrani({
           />
         </View>
       </Modal>
+
+      {/* Anket Oluştur Modal */}
+      <AnketOlusturModal
+        visible={anketModalAcik}
+        onKapat={() => setAnketModalAcik(false)}
+        onAnketGonder={(anketVeri) => {
+          setAnketModalAcik(false);
+          mesajGonder(hedefTuru, hedef, '', undefined, undefined, anketVeri);
+        }}
+        renkler={renkler}
+      />
     </View>
   );
 }
@@ -3210,6 +3331,75 @@ function olusturStiller(renkler) {
       color: renkler.metin,
       fontSize: 14,
       fontWeight: '600',
+    },
+
+    // Header Arama Butonu
+    headerAramaButon: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      marginRight: 4,
+    },
+    headerAramaIkon: {
+      fontSize: 18,
+    },
+
+    // Sabitlenen Mesaj Barı
+    sabitlenenBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: renkler.yuzey,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: renkler.cizgi,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    sabitlenenIcerik: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    sabitlenenIkon: {
+      fontSize: 16,
+      marginRight: 8,
+    },
+    sabitlenenBaslik: {
+      color: renkler.vurgu || '#00a8ff',
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    sabitlenenMetin: {
+      color: renkler.metinSoluk,
+      fontSize: 13,
+      marginTop: 1,
+    },
+    sabitlenenKapat: {
+      padding: 6,
+      marginLeft: 8,
+    },
+    sabitlenenKapatMetin: {
+      color: renkler.metinSoluk,
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
+
+    // Hızlı Emoji Tepki Barı
+    hizliTepkiBari: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 8,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: renkler.cizgi,
+      backgroundColor: renkler.yuzey,
+      borderTopLeftRadius: 14,
+      borderTopRightRadius: 14,
+    },
+    hizliTepkiButon: {
+      padding: 4,
+    },
+    hizliTepkiEmoji: {
+      fontSize: 22,
     },
   });
 }

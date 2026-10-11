@@ -1,63 +1,38 @@
 @echo off
 chcp 65001 > nul
-echo =======================================================
-echo          Textly GitHub'a Tek Tikla Yukleme
-echo =======================================================
+title Textly22 GitHub Yukleme
+color 0A
+echo ============================================================
+echo   TEXTLY22 GITHUB YUKLEME ISLEMI
+echo ============================================================
 echo.
-
-:: Git kontrolu
-where git >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [HATA] Git sistemde bulunamadi!
-    pause
-    exit /b 1
-)
-
-:: Git reposu baslatilmamissa baslat
-if not exist ".git" (
-    git init
-    git branch -M main
-)
-
-:: Uzak repo adresi kontrolu
-git remote get-url origin >nul 2>nul
-if %errorlevel% equ 0 (
-    for /f "tokens=*" %%a in ('git remote get-url origin') do set CURRENT_REPO=%%a
-    echo Hedef Repo: %CURRENT_REPO%
-    echo (Farkli bir repoya yuklemek isterseniz yeni linki yazin, ayni repoya yuklemek icin direkt ENTER'a basin)
-    set /p REPO_URL="Yeni Repo Linki (Opsiyonel): "
-    if not "%REPO_URL%"=="" (
-        git remote set-url origin %REPO_URL%
-    )
-) else (
-    echo GitHub repo linkinizi girin (Ornek: https://github.com/sabitberatceylan-cyber/Textly18.git):
-    set /p REPO_URL="Repo URL: "
-    if "%REPO_URL%"=="" (
-        echo Repo URL bos birakilamaz!
-        pause
-        exit /b 1
-    )
-    git remote add origin %REPO_URL%
-)
+echo Proje klasorune gidiliyor...
+cd /d "C:\Users\LENOVO\Desktop\Textly"
 
 echo.
-echo Dosyalar hazirlaniyor...
-git add .
-git commit -m "Textly guncellemesi" || true
+echo Guncel durum kontrol ediliyor...
+git status -s
 
 echo.
-echo GitHub'a yukleniyor (Push ediliyor)...
-git push -u origin main --force
+echo GitHub'a push ediliyor...
+echo [NOT] Eger ekrana "Sign in with your browser" veya giris penceresi gelirse onaylayin.
+echo.
+
+git push origin main
 
 if %errorlevel% equ 0 (
     echo.
-    echo =======================================================
-    echo  [BASARILI] Tum dosyalar GitHub'a yuklendi!
-    echo  GitHub Actions otomatik olarak APK'yi derlemeye basladi.
-    echo =======================================================
+    echo ============================================================
+    echo   [BASARILI] Kodlar GitHub Textly22 reposuna yuklendi!
+    echo   GitHub Actions otomatik olarak APK derlemesini baslatti.
+    echo ============================================================
 ) else (
     echo.
-    echo [HATA] Yukleme basarisiz oldu. Lutfen internet baglantinizi ve GitHub girisinizi kontrol edin.
+    echo ============================================================
+    echo   [UYARI] Push sirasinda bir hata olustu veya giris bekleniyor.
+    echo ============================================================
 )
 
-pause
+echo.
+echo Pencereyi kapatmak icin bir tusa basin...
+pause > nul

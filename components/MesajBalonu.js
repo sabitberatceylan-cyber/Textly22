@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import {
   View, Text, TouchableWithoutFeedback, TouchableOpacity,
-  Animated, PanResponder, Image, ActivityIndicator, Linking,
+  Animated, PanResponder, Image, ActivityIndicator, Linking, StyleSheet,
 } from 'react-native';
 import { Audio, Video, ResizeMode } from 'expo-av';
 import { Image as ExpoImage } from 'expo-image';
@@ -24,7 +24,7 @@ function durumMetni(durum) {
 
 function MesajBalonu({
   item, benim, hedefTuru, benimAdim, renkler, styles,
-  onYanitla, onBegen, onTekliMenu, onMedyaAc, onAlintiTikla, vurgulu,
+  onYanitla, onBegen, onTepki, onTekliMenu, onMedyaAc, onAlintiTikla, onAnketOyVer, vurgulu,
 }) {
   const pan = useRef(new Animated.Value(0)).current;
   const kalpOlcek = useRef(new Animated.Value(0)).current;
@@ -146,8 +146,10 @@ function MesajBalonu({
     item.medyaTuru === 'gif' ||
     Boolean(item.medyaUrl && /\.(webp|gif)$/i.test((item.medyaUrl || '').split('?')[0]));
 
+  const tepkiSayisi = item.tepkiler && typeof item.tepkiler === 'object' ? Object.keys(item.tepkiler).length : 0;
+
   return (
-    <View style={[styles.balonSatir, benim ? styles.sagaYasli : styles.solaYasli, begeniSayisi > 0 && { marginBottom: 18 }]}>
+    <View style={[styles.balonSatir, benim ? styles.sagaYasli : styles.solaYasli, (begeniSayisi > 0 || tepkiSayisi > 0) && { marginBottom: 18 }]}>
       <Animated.View {...panResponder.panHandlers} style={{ maxWidth: '82%', transform: [{ translateX: pan }] }}>
         <TouchableWithoutFeedback onPress={basildi} onLongPress={uzunBasildi} delayLongPress={300}>
           <Animated.View
@@ -189,7 +191,16 @@ function MesajBalonu({
               <MedyaIcerik item={item} benim={benim} benimAdim={benimAdim} hedefTuru={hedefTuru} styles={styles} renkler={renkler} onMedyaAc={onMedyaAc} />
             ) : null}
 
-            {!item.silindi && !!item.metin && (
+            {!item.silindi && !!item.anket && (
+              <AnketIcerik
+                anket={item.anket}
+                benimAdim={benimAdim}
+                renkler={renkler}
+                onOyVer={(secenekId) => onAnketOyVer && onAnketOyVer(item.id, secenekId)}
+              />
+            )}
+
+            {!item.silindi && !item.anket && !!item.metin && (
               <BaglantiliMetin
                 metin={item.metin}
                 style={benim ? styles.kendiBalonMetin : styles.digerBalonMetin}
@@ -260,12 +271,50 @@ function MesajBalonu({
           </Animated.View>
         </TouchableWithoutFeedback>
 
-        {/* Beğeni rozeti balonun altında şık bir şekilde görünür */}
-        {begeniSayisi > 0 && (
-          <View style={[styles.begeniRozeti, benim ? styles.begeniRozetiSol : styles.begeniRozetiSag]}>
-            <Text style={styles.begeniMetni}>♥ {begeniSayisi > 1 ? begeniSayisi : ''}</Text>
-          </View>
-        )}
+        {/* Beğeni veya Emoji Tepki Rozetleri */}
+        {(() => {
+          const tepkiListesi = item.tepkiler && typeof item.tepkiler === 'object'
+            ? Object.entries(item.tepkiler).filter(([, list]) => Array.isArray(list) && list.length > 0)
+            : [];
+
+          if (tepkiListesi.length > 0) {
+            return (
+              <View style={[balonEkstraStiller.tepkilerSatir, benim ? balonEkstraStiller.tepkilerSatirSag : balonEkstraStiller.tepkilerSatirSol]}>
+                {tepkiListesi.map(([emoji, list]) => {
+                  const benVerdim = list.some((u) => (u || '').toLowerCase() === (benimAdim || '').toLowerCase());
+                  return (
+                    <TouchableOpacity
+                      key={emoji}
+                      style={[
+                        balonEkstraStiller.tepkiKapsul,
+                        benVerdim && balonEkstraStiller.tepkiKapsulBenim,
+                      ]}
+                      onPress={() => onTepki && onTepki(item, emoji)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={balonEkstraStiller.tepkiEmojiMetin}>{emoji}</Text>
+                      {list.length > 1 && (
+                        <Text style={[balonEkstraStiller.tepkiSayiMetin, benVerdim && balonEkstraStiller.tepkiSayiBenim]}>
+                          {list.length}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            );
+          }
+
+          if (begeniSayisi > 0) {
+            return (
+              <View style={[styles.begeniRozeti, benim ? styles.begeniRozetiSol : styles.begeniRozetiSag]}>
+                <Text style={styles.begeniMetni}>♥ {begeniSayisi > 1 ? begeniSayisi : ''}</Text>
+              </View>
+            );
+          }
+
+          return null;
+        })()}
       </Animated.View>
     </View>
   );
@@ -647,9 +696,204 @@ function MedyaIcerik({ item, benim, benimAdim, hedefTuru, styles, renkler, onMed
   );
 }
 
+function AnketIcerik({ anket, benimAdim, renkler, onOyVer }) {
+  const soru = anket?.soru || 'Anket';
+  const secenekler = anket?.secenekler || [];
+  const cokluSecim = !!anket?.cokluSecim;
+
+  const toplamOy = secenekler.reduce((acc, s) => acc + (Array.isArray(s.oylar) ? s.oylar.length : 0), 0);
+
+  return (
+    <View style={anketStilleri.kutu}>
+      <Text style={anketStilleri.soru}>{soru}</Text>
+      <Text style={anketStilleri.altBilgi}>
+        📊 Anket · {toplamOy} oy · {cokluSecim ? 'Çoklu seçim' : 'Tek seçim'}
+      </Text>
+
+      <View style={anketStilleri.seceneklerListesi}>
+        {secenekler.map((sec) => {
+          const oySayisi = Array.isArray(sec.oylar) ? sec.oylar.length : 0;
+          const yuzde = toplamOy > 0 ? Math.round((oySayisi / toplamOy) * 100) : 0;
+          const benimOyum = Array.isArray(sec.oylar) && sec.oylar.some((u) => (u || '').toLowerCase() === (benimAdim || '').toLowerCase());
+
+          return (
+            <TouchableOpacity
+              key={sec.id}
+              style={[anketStilleri.secenekKart, benimOyum && anketStilleri.secenekKartSecili]}
+              onPress={() => onOyVer && onOyVer(sec.id)}
+              activeOpacity={0.7}
+            >
+              {/* Dolgu Barı */}
+              <View style={[anketStilleri.dolguBari, { width: `${yuzde}%` }, benimOyum && anketStilleri.dolguBariSecili]} />
+
+              <View style={anketStilleri.secenekIcerik}>
+                {/* Checkbox / Radio Daire */}
+                <View style={[anketStilleri.daire, benimOyum && anketStilleri.daireSecili]}>
+                  {benimOyum && <Text style={anketStilleri.tikMetin}>✓</Text>}
+                </View>
+
+                {/* Seçenek Metni */}
+                <Text style={[anketStilleri.secenekMetin, benimOyum && anketStilleri.secenekMetinSecili]} numberOfLines={2}>
+                  {sec.metin}
+                </Text>
+
+                {/* Yüzde & Sayı */}
+                <Text style={anketStilleri.yuzdeMetin}>
+                  %{yuzde} ({oySayisi})
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const anketStilleri = StyleSheet.create({
+  kutu: {
+    minWidth: 230,
+    maxWidth: 290,
+    paddingVertical: 4,
+    marginBottom: 4,
+  },
+  soru: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  altBilgi: {
+    color: 'rgba(255, 255, 255, 0.65)',
+    fontSize: 11,
+    marginBottom: 10,
+  },
+  seceneklerListesi: {
+    gap: 7,
+  },
+  secenekKart: {
+    borderRadius: 9,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    overflow: 'hidden',
+    position: 'relative',
+    minHeight: 38,
+    justifyContent: 'center',
+  },
+  secenekKartSecili: {
+    borderColor: '#00a8ff',
+    backgroundColor: 'rgba(0, 168, 255, 0.12)',
+  },
+  dolguBari: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  dolguBariSecili: {
+    backgroundColor: 'rgba(0, 168, 255, 0.28)',
+  },
+  secenekIcerik: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    zIndex: 1,
+  },
+  daire: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  daireSecili: {
+    borderColor: '#00a8ff',
+    backgroundColor: '#00a8ff',
+  },
+  tikMetin: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  secenekMetin: {
+    flex: 1,
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  secenekMetinSecili: {
+    fontWeight: '700',
+  },
+  yuzdeMetin: {
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 11,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+});
+
+const balonEkstraStiller = StyleSheet.create({
+  tepkilerSatir: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: -8,
+    marginBottom: 6,
+    zIndex: 2,
+  },
+  tepkilerSatirSag: {
+    alignSelf: 'flex-end',
+    marginRight: 8,
+  },
+  tepkilerSatirSol: {
+    alignSelf: 'flex-start',
+    marginLeft: 8,
+  },
+  tepkiKapsul: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1f242c',
+    borderRadius: 14,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+  },
+  tepkiKapsulBenim: {
+    backgroundColor: 'rgba(0, 168, 255, 0.22)',
+    borderColor: '#00a8ff',
+  },
+  tepkiEmojiMetin: {
+    fontSize: 13,
+  },
+  tepkiSayiMetin: {
+    color: '#c9d1d9',
+    fontSize: 11,
+    fontWeight: '600',
+    marginLeft: 3,
+  },
+  tepkiSayiBenim: {
+    color: '#00a8ff',
+    fontWeight: '700',
+  },
+});
+
 export default React.memo(MesajBalonu, (prevProps, nextProps) => {
   return (
     prevProps.item === nextProps.item &&
+    prevProps.item?.tepkiler === nextProps.item?.tepkiler &&
+    prevProps.item?.anket === nextProps.item?.anket &&
     prevProps.benim === nextProps.benim &&
     prevProps.hedefTuru === nextProps.hedefTuru &&
     prevProps.benimAdim === nextProps.benimAdim &&

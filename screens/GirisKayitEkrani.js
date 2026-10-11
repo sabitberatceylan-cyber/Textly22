@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { bosluk } from '../theme';
@@ -70,6 +71,9 @@ export default function GirisKayitEkrani({ onGiris }) {
     <SafeAreaView style={styles.kok} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={styles.kok} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={styles.icerik} keyboardShouldPersistTaps="handled">
+          <View style={styles.logoKutu}>
+            <Image source={require('../assets/icon.png')} style={styles.logoGorsel} resizeMode="contain" />
+          </View>
           <Text style={styles.baslik}>Textly</Text>
           <Text style={styles.altBaslik}>Deneysel mesajlaşma uygulaması</Text>
 
@@ -159,6 +163,8 @@ function olusturStiller(renkler) {
   return StyleSheet.create({
   kok: { flex: 1, backgroundColor: renkler.arkaplan },
   icerik: { flexGrow: 1, justifyContent: 'center', padding: bosluk.lg },
+  logoKutu: { alignItems: 'center', marginBottom: bosluk.sm },
+  logoGorsel: { width: 72, height: 72, borderRadius: 18 },
   baslik: { color: renkler.metin, fontSize: 40, fontWeight: '700', textAlign: 'center', letterSpacing: 1 },
   altBaslik: { color: renkler.metinSoluk, fontSize: 14, textAlign: 'center', marginTop: bosluk.xs, marginBottom: bosluk.lg },
   sekmeler: { flexDirection: 'row', backgroundColor: renkler.yuzey, borderRadius: 10, padding: 4, marginBottom: bosluk.lg },

@@ -8,6 +8,7 @@ import AnaSayfaEkrani from './screens/AnaSayfaEkrani';
 import SohbetEkrani from './screens/SohbetEkrani';
 import AyarlarEkrani from './screens/AyarlarEkrani';
 import GuncellemeModal from './components/GuncellemeModal';
+import AramaModal from './components/AramaModal';
 import { SoketSaglayici, useSoket } from './lib/soketBaglami';
 import { TemaSaglayici, useTema } from './lib/temaBaglami';
 import { ayarlariYukle, ayarlariKaydet, ayarlariTemizle } from './lib/depolama';
@@ -32,6 +33,31 @@ function SoketGuncellemeDinleyici({ onYeniGuncelleme }) {
     }
   }, [guncellemeHaberi, onYeniGuncelleme, guncellemeHaberiTemizle]);
   return null;
+}
+
+function AramaYonetici({ oturum }) {
+  const {
+    aktifArama,
+    aramaYanitla,
+    aramaReddet,
+    aramaSonlandir,
+    aramaAyril,
+    aramaDurumGonder,
+  } = useSoket();
+
+  return (
+    <AramaModal
+      aktifArama={aktifArama}
+      sunucuAdres={oturum?.sunucuAdres}
+      kullanici={oturum?.kullanici}
+      sifre={oturum?.sifre}
+      onYanitla={aramaYanitla}
+      onReddet={aramaReddet}
+      onSonlandir={aramaSonlandir}
+      onAyril={aramaAyril}
+      onDurumGonder={aramaDurumGonder}
+    />
+  );
 }
 
 function AnaIcerik() {
@@ -336,6 +362,9 @@ function AnaIcerik() {
           sunucuAdres={oturum?.sunucuAdres}
           onKapat={() => setGuncellemeModalAcik(false)}
         />
+
+        {/* Canlı Sesli Arama Modalı */}
+        <AramaYonetici oturum={oturum} />
       </View>
     </SoketSaglayici>
   );
