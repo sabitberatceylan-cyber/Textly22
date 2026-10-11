@@ -424,42 +424,11 @@ function TemaDeseni({ temaId }) {
 
 function TelefonAramaIkon({ renk = '#00a8ff' }) {
   return (
-    <View style={{ width: 18, height: 18, justifyContent: 'center', alignItems: 'center' }}>
-      <View
-        style={{
-          width: 13,
-          height: 14,
-          borderWidth: 2,
-          borderColor: renk,
-          borderRadius: 3.5,
-          borderRightWidth: 0,
-          transform: [{ rotate: '-45deg' }],
-        }}
-      >
-        <View
-          style={{
-            position: 'absolute',
-            top: -2,
-            right: -3,
-            width: 4.5,
-            height: 4.5,
-            backgroundColor: renk,
-            borderRadius: 1.5,
-          }}
-        />
-        <View
-          style={{
-            position: 'absolute',
-            bottom: -2,
-            right: -3,
-            width: 4.5,
-            height: 4.5,
-            backgroundColor: renk,
-            borderRadius: 1.5,
-          }}
-        />
-      </View>
-    </View>
+    <Image
+      source={require('../assets/phone-call.png')}
+      style={{ width: 20, height: 20, tintColor: renk }}
+      resizeMode="contain"
+    />
   );
 }
 
@@ -1663,7 +1632,7 @@ export default function SohbetEkrani({
               </Text>
               <Text style={styles.sabitlenenMetin} numberOfLines={1}>
                 {sabitlenenMesaj?.metin
-                  || (sabitlenenMesaj?.anket ? `📊 ${sabitlenenMesaj.anket.soru}` : null)
+                  || (sabitlenenMesaj?.anket ? `Anket: ${sabitlenenMesaj.anket.soru}` : null)
                   || (sabitlenenMesaj?.medyaTuru === 'ses' ? '🎤 Ses kaydı' : null)
                   || (sabitlenenMesaj?.medyaTuru === 'video' ? '🎥 Video' : null)
                   || (sabitlenenMesaj?.medyaTuru ? '📷 Medya' : 'Mesaja gitmek için dokunun')}
@@ -1894,9 +1863,14 @@ export default function SohbetEkrani({
                 : { alignSelf: 'center', bottom: insets.bottom + 80 },
             ]}
           >
-            {/* Hızlı Emoji Tepki Çubuğu */}
-            <View style={styles.hizliTepkiBari}>
-              {['❤️', '😂', '🔥', '👍', '😮', '😢', '👏'].map((emoji) => (
+            {/* Hızlı Emoji Tepki Çubuğu (Yana kaydırılabilir) */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.hizliTepkiBariIcerik}
+              style={styles.hizliTepkiBari}
+            >
+              {['❤️', '😂', '🔥', '👍', '😮', '😢', '👏', '🙏', '🎉', '💯', '😍', '✨'].map((emoji) => (
                 <TouchableOpacity
                   key={emoji}
                   style={styles.hizliTepkiButon}
@@ -1910,7 +1884,7 @@ export default function SohbetEkrani({
                   <Text style={styles.hizliTepkiEmoji}>{emoji}</Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
 
             {!!mesajMenu?.item?.metin && (
               <TouchableOpacity
@@ -1950,8 +1924,8 @@ export default function SohbetEkrani({
               >
                 <Text style={styles.aksiyonMetni}>
                   {Number(sabitlenenMesajlar?.[anahtar]) === Number(mesajMenu.item.id)
-                    ? '📌 Sabitlemeyi Kaldır'
-                    : '📌 Mesajı Sabitle'}
+                    ? 'Sabitlemeyi Kaldır'
+                    : 'Mesajı Sabitle'}
                 </Text>
               </TouchableOpacity>
             )}
@@ -2203,7 +2177,7 @@ export default function SohbetEkrani({
               <Text style={styles.aksiyonMetni}>Tema Değiştir</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.aksiyonSatiri} onPress={() => { setMenuModalAcik(false); setAnketModalAcik(true); }}>
-              <Text style={styles.aksiyonMetni}>📊 Anket Oluştur</Text>
+              <Text style={styles.aksiyonMetni}>Anket Oluştur</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.aksiyonSatiri} onPress={sessizeAlToggle}>
               <Text style={styles.aksiyonMetni}>{sessizMi ? 'Sesi Aç' : 'Sessize Al'}</Text>
@@ -3166,7 +3140,7 @@ function olusturStiller(renkler) {
 
     // Mesaj Menusu (floating bubble menu)
     mesajMenuArkaplan: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
-    mesajMenuKutu: { position: 'absolute', width: 280, maxWidth: '90%' },
+    mesajMenuKutu: { position: 'absolute', width: 205, maxWidth: '82%' },
 
     // Onay Modalı (Custom dark confirmation)
     onayModalArkaplan: {
@@ -3427,26 +3401,29 @@ function olusturStiller(renkler) {
       fontWeight: 'bold',
     },
 
-    // Hızlı Emoji Tepki Barı
+    // Hızlı Emoji Tepki Barı (Yana kaydırılabilir)
     hizliTepkiBari: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-evenly',
-      paddingHorizontal: 4,
-      paddingVertical: 8,
       borderBottomWidth: 1,
       borderBottomColor: renkler.cizgi,
       backgroundColor: renkler.yuzey,
       borderTopLeftRadius: 14,
       borderTopRightRadius: 14,
+      maxHeight: 46,
+    },
+    hizliTepkiBariIcerik: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 6,
+      paddingVertical: 6,
     },
     hizliTepkiButon: {
-      padding: 3,
+      paddingHorizontal: 5,
+      paddingVertical: 2,
       alignItems: 'center',
       justifyContent: 'center',
     },
     hizliTepkiEmoji: {
-      fontSize: 22,
+      fontSize: 20,
     },
   });
 }

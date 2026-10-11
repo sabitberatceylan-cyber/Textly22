@@ -707,7 +707,7 @@ function AnketIcerik({ anket, benimAdim, renkler, onOyVer }) {
     <View style={anketStilleri.kutu}>
       <Text style={anketStilleri.soru}>{soru}</Text>
       <Text style={anketStilleri.altBilgi}>
-        📊 Anket · {toplamOy} oy · {cokluSecim ? 'Çoklu seçim' : 'Tek seçim'}
+        Anket · {toplamOy} oy · {cokluSecim ? 'Çoklu seçim' : 'Tek seçim'}
       </Text>
 
       <View style={anketStilleri.seceneklerListesi}>

@@ -108,6 +108,7 @@ export default function AramaModal({
 
     return () => {
       clearInterval(timerRef.current);
+      sesleriDurdur();
     };
   }, [durum, benimAramam, aramaId]);
 
