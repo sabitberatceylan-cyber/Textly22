@@ -119,8 +119,18 @@ export default function AramaModal({
         playsInSilentModeIOS: true,
         staysActiveInBackground: true,
         shouldRouteThroughEarpiece: !hoparlorAcik,
+        playThroughEarpieceAndroid: !hoparlorAcik,
       }).catch(() => {});
     }
+    return () => {
+      Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldRouteThroughEarpiece: false,
+        playThroughEarpieceAndroid: false,
+      }).catch(() => {});
+    };
   }, [hoparlorAcik, durum]);
 
   if (!aktifArama) return null;
@@ -252,22 +262,32 @@ export default function AramaModal({
             <View style={styles.aktifKontroller}>
               {/* Mikrofon Kapat / Aç */}
               <TouchableOpacity
-                style={[styles.kontrolKucukButon, mikrofonSessiz && styles.kontrolKucukButonAktif]}
+                style={[
+                  styles.kontrolKucukButon,
+                  mikrofonSessiz ? styles.kontrolKucukButonSessiz : null,
+                ]}
                 onPress={mikrofonToggle}
                 activeOpacity={0.7}
               >
                 <Text style={styles.kontrolIkon}>{mikrofonSessiz ? '🔇' : '🎤'}</Text>
-                <Text style={styles.kontrolMetin}>{mikrofonSessiz ? 'Sesi Aç' : 'Sessiz'}</Text>
+                <Text style={[styles.kontrolMetin, mikrofonSessiz && { color: '#ff4d4f', fontWeight: '700' }]}>
+                  {mikrofonSessiz ? 'Sessizde' : 'Mikrofon'}
+                </Text>
               </TouchableOpacity>
 
               {/* Hoparlör Aç / Kapat */}
               <TouchableOpacity
-                style={[styles.kontrolKucukButon, hoparlorAcik && styles.kontrolKucukButonAktif]}
+                style={[
+                  styles.kontrolKucukButon,
+                  hoparlorAcik ? styles.kontrolKucukButonHoparlor : null,
+                ]}
                 onPress={hoparlorToggle}
                 activeOpacity={0.7}
               >
                 <Text style={styles.kontrolIkon}>{hoparlorAcik ? '🔊' : '🔈'}</Text>
-                <Text style={styles.kontrolMetin}>Hoparlör</Text>
+                <Text style={[styles.kontrolMetin, hoparlorAcik && { color: '#00a8ff', fontWeight: '700' }]}>
+                  {hoparlorAcik ? 'Hoparlör' : 'Ahize'}
+                </Text>
               </TouchableOpacity>
 
               {/* Aramayı Sonlandır / Ayrıl */}
@@ -465,6 +485,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 168, 255, 0.25)',
     borderWidth: 1,
     borderColor: '#00a8ff',
+  },
+  kontrolKucukButonHoparlor: {
+    backgroundColor: 'rgba(0, 168, 255, 0.25)',
+    borderWidth: 1.5,
+    borderColor: '#00a8ff',
+  },
+  kontrolKucukButonSessiz: {
+    backgroundColor: 'rgba(218, 54, 51, 0.25)',
+    borderWidth: 1.5,
+    borderColor: '#da3633',
   },
   kontrolIkon: {
     fontSize: 22,

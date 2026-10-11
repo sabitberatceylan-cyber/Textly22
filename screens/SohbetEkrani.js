@@ -422,6 +422,47 @@ function TemaDeseni({ temaId }) {
   return null;
 }
 
+function TelefonAramaIkon({ renk = '#00a8ff' }) {
+  return (
+    <View style={{ width: 18, height: 18, justifyContent: 'center', alignItems: 'center' }}>
+      <View
+        style={{
+          width: 13,
+          height: 14,
+          borderWidth: 2,
+          borderColor: renk,
+          borderRadius: 3.5,
+          borderRightWidth: 0,
+          transform: [{ rotate: '-45deg' }],
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            top: -2,
+            right: -3,
+            width: 4.5,
+            height: 4.5,
+            backgroundColor: renk,
+            borderRadius: 1.5,
+          }}
+        />
+        <View
+          style={{
+            position: 'absolute',
+            bottom: -2,
+            right: -3,
+            width: 4.5,
+            height: 4.5,
+            backgroundColor: renk,
+            borderRadius: 1.5,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
 export default function SohbetEkrani({
   sunucuAdres, kullanici, sifre, hedefTuru, hedef, baslik, uyeler, yonetici, yoneticiler, resimUrl = null,
   engellenenler, sessizeAlinanlar, ilkMedya = null, ilkYaziKatmani = null, ilkBaslik = '', ilkTekGorunum = false,
@@ -1599,7 +1640,7 @@ export default function SohbetEkrani({
             hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
             style={styles.headerAramaButon}
           >
-            <Text style={styles.headerAramaIkon}>📞</Text>
+            <TelefonAramaIkon renk={renkler.vurgu || '#00a8ff'} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setMenuModalAcik(true)} hitSlop={{ top: 12, bottom: 12, left: 8, right: 12 }}>
             <Text style={styles.menuIkon}>⋮</Text>
@@ -1914,7 +1955,11 @@ export default function SohbetEkrani({
                 </Text>
               </TouchableOpacity>
             )}
-            {mesajMenu?.item?.medyaTuru === 'sticker' && !!mesajMenu.item.medyaUrl && (
+            {(mesajMenu?.item?.medyaTuru === 'sticker' ||
+              mesajMenu?.item?.medyaTuru === 'webp' ||
+              mesajMenu?.item?.medyaTuru === 'gif' ||
+              Boolean(mesajMenu?.item?.medyaUrl && /\.(webp|gif)$/i.test((mesajMenu.item.medyaUrl || '').split('?')[0]))) &&
+              !!mesajMenu?.item?.medyaUrl && (
               <TouchableOpacity
                 style={styles.aksiyonSatiri}
                 onPress={async () => {
@@ -3121,7 +3166,7 @@ function olusturStiller(renkler) {
 
     // Mesaj Menusu (floating bubble menu)
     mesajMenuArkaplan: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
-    mesajMenuKutu: { position: 'absolute', width: 175 },
+    mesajMenuKutu: { position: 'absolute', width: 280, maxWidth: '90%' },
 
     // Onay Modalı (Custom dark confirmation)
     onayModalArkaplan: {
@@ -3386,8 +3431,8 @@ function olusturStiller(renkler) {
     hizliTepkiBari: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 8,
+      justifyContent: 'space-evenly',
+      paddingHorizontal: 4,
       paddingVertical: 8,
       borderBottomWidth: 1,
       borderBottomColor: renkler.cizgi,
@@ -3396,7 +3441,9 @@ function olusturStiller(renkler) {
       borderTopRightRadius: 14,
     },
     hizliTepkiButon: {
-      padding: 4,
+      padding: 3,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     hizliTepkiEmoji: {
       fontSize: 22,

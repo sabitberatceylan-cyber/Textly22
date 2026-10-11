@@ -113,6 +113,15 @@ function AnaIcerik() {
 
     tumBildirimleriTemizle();
 
+    if (veri?.tip === 'arama') {
+      const arayan = veri.arayan;
+      if (arayan) {
+        setAktifSohbet({ hedefTuru: 'kisi', hedef: arayan, baslik: arayan, resimUrl: veri.profilResimUrl || null });
+        setEkran('sohbet');
+      }
+      return;
+    }
+
     if (anahtar.startsWith('kisi:')) {
       const kisiAdi = anahtar.replace('kisi:', '');
       const bildirimResim = veri?.profilResimUrl || null;
