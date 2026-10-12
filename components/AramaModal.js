@@ -8,6 +8,7 @@ import {
   Animated,
   Image,
   Dimensions,
+  DeviceEventEmitter,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import webrtcYonetici from '../lib/webrtcYonetici';
@@ -46,6 +47,7 @@ export default function AramaModal({
   const [mikrofonSessiz, setMikrofonSessiz] = useState(false);
   const [hoparlorAcik, setHoparlorAcik] = useState(false);
   const [gecenSure, setGecenSure] = useState(0);
+  const [yakinMi, setYakinMi] = useState(false);
   const mikrofonSessizRef = useRef(false);
   const hoparlorAcikRef = useRef(false);
 
@@ -141,6 +143,22 @@ export default function AramaModal({
     };
   }, [hoparlorAcik, durum]);
 
+  // Kulağa yaklaşınca ekranı karartma ve dokunmayı engelleme (Ahize modu)
+  useEffect(() => {
+    if (durum !== 'baglandi' || hoparlorAcik) {
+      setYakinMi(false);
+      return;
+    }
+
+    const sub = DeviceEventEmitter.addListener('Proximity', (data) => {
+      setYakinMi(!!data?.isNear);
+    });
+
+    return () => {
+      sub.remove();
+    };
+  }, [durum, hoparlorAcik]);
+
   // WebRTC Canlı Ses Akışı (Düşük Gecikmeli, Donanım Yankı Engellemeli & P2P)
   useEffect(() => {
     if (durum !== 'baglandi' || !aramaId) {
@@ -152,6 +170,7 @@ export default function AramaModal({
     webrtcYonetici.baslat({
       aramaId,
       isCaller: benimAramam,
+      hoparlorAcik,
       onSinyal: (sinyal) => {
         if (aramaSinyalGonder) {
           aramaSinyalGonder(aramaId, sinyal);
@@ -190,6 +209,10 @@ export default function AramaModal({
     const yeni = !hoparlorAcik;
     setHoparlorAcik(yeni);
     hoparlorAcikRef.current = yeni;
+    if (yeni) {
+      setYakinMi(false);
+    }
+    webrtcYonetici.hoparlorAyarla(yeni);
     Audio.setAudioModeAsync({
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
@@ -360,12 +383,30 @@ export default function AramaModal({
             </View>
           )}
         </View>
+
+        {/* Ahizedeyken Kulağa Yaklaşınca Ekran Karartma & Dokunma Kilidi */}
+        {yakinMi && !hoparlorAcik && (
+          <View
+            style={styles.karartmaEkrani}
+            pointerEvents="auto"
+          />
+        )}
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  karartmaEkrani: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000000',
+    zIndex: 999999,
+    elevation: 999999,
+  },
   kok: {
     flex: 1,
     backgroundColor: '#0d1117',
