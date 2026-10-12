@@ -45,6 +45,8 @@ function AramaYonetici({ oturum }) {
     aramaDurumGonder,
     aramaSesGonder,
     gelenSesDinle,
+    aramaSinyalGonder,
+    gelenSinyalDinle,
   } = useSoket();
 
   return (
@@ -60,6 +62,8 @@ function AramaYonetici({ oturum }) {
       onDurumGonder={aramaDurumGonder}
       onSesGonder={aramaSesGonder}
       gelenSesDinle={gelenSesDinle}
+      aramaSinyalGonder={aramaSinyalGonder}
+      gelenSinyalDinle={gelenSinyalDinle}
     />
   );
 }

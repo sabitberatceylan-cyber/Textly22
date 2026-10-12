@@ -10,7 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import webrtcYonetici from '../lib/webrtcYonetici';
 import {
   araniyorSesiCal,
   gelenZilSesiCal,
@@ -28,25 +28,6 @@ function saniyeFormatla(sn) {
   return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-const SES_KAYIT_PROFILI = {
-  android: {
-    extension: '.m4a',
-    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-    audioEncoder: Audio.AndroidAudioEncoder.AAC,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 24000,
-  },
-  ios: {
-    extension: '.m4a',
-    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-    audioQuality: Audio.IOSAudioQuality.LOW,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 24000,
-  },
-};
-
 export default function AramaModal({
   aktifArama,
   sunucuAdres,
@@ -59,6 +40,8 @@ export default function AramaModal({
   onDurumGonder,
   onSesGonder,
   gelenSesDinle,
+  aramaSinyalGonder,
+  gelenSinyalDinle,
 }) {
   const [mikrofonSessiz, setMikrofonSessiz] = useState(false);
   const [hoparlorAcik, setHoparlorAcik] = useState(false);
@@ -158,106 +141,38 @@ export default function AramaModal({
     };
   }, [hoparlorAcik, durum]);
 
-  // Canlı Ses Kayıt ve Gönderme Döngüsü
+  // WebRTC Canlı Ses Akışı (Düşük Gecikmeli, Donanım Yankı Engellemeli & P2P)
   useEffect(() => {
-    if (durum !== 'baglandi' || !aramaId) return;
+    if (durum !== 'baglandi' || !aramaId) {
+      webrtcYonetici.durdur();
+      return;
+    }
 
-    let calisiyor = true;
-    let aktifKayit = null;
-
-    async function sesKayitDongusu() {
-      try {
-        const izin = await Audio.requestPermissionsAsync();
-        if (!izin.granted) return;
-      } catch {}
-
-      while (calisiyor) {
-        try {
-          const rec = new Audio.Recording();
-          aktifKayit = rec;
-          await rec.prepareToRecordAsync(SES_KAYIT_PROFILI);
-          await rec.startAsync();
-
-          // 1.5 saniyelik paketler halinde kaydet
-          await new Promise((r) => setTimeout(r, 1500));
-          if (!calisiyor) {
-            try { await rec.stopAndUnloadAsync(); } catch {}
-            break;
-          }
-
-          await rec.stopAndUnloadAsync();
-          const uri = rec.getURI();
-          aktifKayit = null;
-
-          if (uri) {
-            if (!mikrofonSessizRef.current && onSesGonder) {
-              const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-              onSesGonder(aramaId, b64);
-            }
-            await FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
-          }
-        } catch {
-          aktifKayit = null;
-          await new Promise((r) => setTimeout(r, 400));
+    // WebRTC'yi başlat (Arayan offer üretir, aranan answer bekler)
+    webrtcYonetici.baslat({
+      aramaId,
+      isCaller: benimAramam,
+      onSinyal: (sinyal) => {
+        if (aramaSinyalGonder) {
+          aramaSinyalGonder(aramaId, sinyal);
         }
-      }
-    }
-
-    sesKayitDongusu();
-
-    return () => {
-      calisiyor = false;
-      if (aktifKayit) {
-        aktifKayit.stopAndUnloadAsync().catch(() => {});
-        aktifKayit = null;
-      }
-    };
-  }, [durum, aramaId, onSesGonder]);
-
-  // Karşı Tarafın Canlı Sesini Alma ve Çalma Döngüsü
-  useEffect(() => {
-    if (durum !== 'baglandi' || !gelenSesDinle) return;
-
-    const sesKuyrugu = [];
-    let caliyorMu = false;
-
-    async function kuyruktanCal() {
-      if (caliyorMu || sesKuyrugu.length === 0) return;
-      caliyorMu = true;
-      const b64 = sesKuyrugu.shift();
-      const tmpPath = `${FileSystem.cacheDirectory}ses_in_${Date.now()}_${Math.random().toString(36).slice(2)}.m4a`;
-
-      try {
-        await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: FileSystem.EncodingType.Base64 });
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: tmpPath },
-          { shouldPlay: true, volume: 1.0 }
-        );
-        sound.setOnPlaybackStatusUpdate(async (st) => {
-          if (st.didJustFinish) {
-            await sound.unloadAsync().catch(() => {});
-            await FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
-            caliyorMu = false;
-            kuyruktanCal();
-          }
-        });
-      } catch {
-        caliyorMu = false;
-        kuyruktanCal();
-      }
-    }
-
-    const iptal = gelenSesDinle((b64Ses, gonderen) => {
-      if (!b64Ses) return;
-      if (gonderen && String(gonderen).toLowerCase() === String(kullanici).toLowerCase()) return;
-      sesKuyrugu.push(b64Ses);
-      kuyruktanCal();
+      },
     });
 
+    // Karşı taraftan gelen WebRTC sinyallerini (Offer/Answer/Candidate) dinle
+    const sinyalIptal = gelenSinyalDinle
+      ? gelenSinyalDinle((sinyal, gonderen, sAramaId) => {
+          if (!sAramaId || sAramaId === aramaId) {
+            webrtcYonetici.sinyalIsle(sinyal);
+          }
+        })
+      : () => {};
+
     return () => {
-      iptal();
+      sinyalIptal();
+      webrtcYonetici.durdur();
     };
-  }, [durum, gelenSesDinle, kullanici]);
+  }, [durum, aramaId, benimAramam, aramaSinyalGonder, gelenSinyalDinle]);
 
   if (!aktifArama) return null;
 
@@ -265,6 +180,7 @@ export default function AramaModal({
     const yeni = !mikrofonSessiz;
     setMikrofonSessiz(yeni);
     mikrofonSessizRef.current = yeni;
+    webrtcYonetici.mikrofonAyarla(yeni);
     if (onDurumGonder && aramaId) {
       onDurumGonder(aramaId, { mikrofonKapali: yeni });
     }
@@ -274,6 +190,13 @@ export default function AramaModal({
     const yeni = !hoparlorAcik;
     setHoparlorAcik(yeni);
     hoparlorAcikRef.current = yeni;
+    Audio.setAudioModeAsync({
+      allowsRecordingIOS: true,
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+      shouldRouteThroughEarpiece: !yeni,
+      playThroughEarpieceAndroid: !yeni,
+    }).catch(() => {});
   }
 
   const gosterilenBaslik =
